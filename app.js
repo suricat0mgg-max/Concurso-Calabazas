@@ -257,8 +257,12 @@
 
   // Devuelve {nombreNormalizado: {nombre, ids}} con el último voto de cada docente.
   async function leerRespuestas() {
-    const url = (CONFIG.RESULTADOS_CSV || '').trim();
+    let url = (CONFIG.RESULTADOS_CSV || '').trim();
     if (!url) return null;
+    // Un enlace normal de la hoja (compartida con «cualquier persona con el enlace»)
+    // se lee como CSV a través de su exportación de consultas.
+    const hoja = url.match(/docs\.google\.com\/spreadsheets\/d\/([\w-]{20,})/);
+    if (hoja && !/\/d\/e\//.test(url)) url = 'https://docs.google.com/spreadsheets/d/' + hoja[1] + '/gviz/tq?tqx=out:csv';
     const { texto } = await http(url + (url.includes('?') ? '&' : '?') + 't=' + Date.now());
     const filas = leerCSV(texto).slice(1);
     const votos = {};
@@ -312,7 +316,9 @@
         if (!ids.length) throw new Error('Elige al menos una calabaza');
         if (ids.length > maxVotos) throw new Error('Puedes votar como máximo ' + maxVotos + ' calabazas');
         if (ids.some((id) => !existen.has(id))) throw new Error('Hay calabazas que no existen');
-        await enviarRespuesta(nombreBonito(texto), ids.join(','));
+        // «#3 #15 #120»: siempre es texto, también con una sola calabaza, para que
+        // la hoja no lo convierta en número y lo pierda al leerla.
+        await enviarRespuesta(nombreBonito(texto), ids.map((id) => '#' + id).join(' '));
         return { ok: true, total: ids.length };
       }
       case 'borrar':
