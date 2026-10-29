@@ -1,0 +1,356 @@
+/* Noche de Halloween para niños: cielo morado con luna, murciélagos y caramelos.
+   Tema único oscuro a propósito (es de noche). */
+:root {
+  --cielo-1: #2b1350;
+  --cielo-2: #4a1f7a;
+  --superficie: #3a1a63;
+  --superficie-2: #52298a;
+  --borde: #7a4fc0;
+  --texto: #fff7e8;
+  --suave: #e0ccff;
+  --naranja: #ff8c1a;
+  --naranja-claro: #ffb347;
+  --naranja-oscuro: #e06a00;
+  --baba: #8fe36b;
+  --baba-oscuro: #5fb83e;
+  --luna: #fff3c4;
+  --error: #ff6b8a;
+  --tinta: #2b1350;
+  --radio: 22px;
+  --fuente-titulo: "Chewy", "Comic Sans MS", "Trebuchet MS", cursive;
+  --fuente: "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+[hidden] { display: none !important; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--fuente);
+  font-size: 16px;
+  background: var(--cielo-1);
+  background-image:
+    radial-gradient(2px 2px at 20% 12%, var(--luna) 50%, transparent 51%),
+    radial-gradient(2px 2px at 75% 30%, var(--luna) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 40% 55%, var(--luna) 50%, transparent 51%),
+    radial-gradient(2px 2px at 88% 70%, var(--luna) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 10% 85%, var(--luna) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 60% 90%, var(--luna) 50%, transparent 51%),
+    linear-gradient(180deg, var(--cielo-1) 0%, var(--cielo-2) 100%);
+  background-attachment: fixed;
+  color: var(--texto);
+  line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+  overflow-x: hidden;
+}
+
+/* ---------- Decoración ---------- */
+
+.decoracion { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.luna {
+  position: absolute;
+  top: 120px;
+  right: 14px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--luna);
+  box-shadow: 0 0 40px 10px rgba(255, 243, 196, .35);
+}
+.luna::after {
+  content: "";
+  position: absolute;
+  inset: 0 -14px 6px 18px;
+  border-radius: 50%;
+  background: var(--cielo-1);
+}
+.murcielago { position: absolute; font-size: 28px; animation: volar 14s linear infinite; }
+.murcielago:nth-child(2) { top: 14%; animation-duration: 17s; }
+.murcielago:nth-child(3) { top: 38%; animation-duration: 21s; animation-delay: -7s; font-size: 20px; }
+.murcielago:nth-child(4) { top: 66%; animation-duration: 25s; animation-delay: -13s; font-size: 24px; }
+.fantasma { position: absolute; bottom: 120px; left: 6px; font-size: 40px; opacity: .55; animation: flotar 4s ease-in-out infinite; }
+
+@keyframes volar {
+  0% { transform: translateX(-60px) translateY(0); }
+  25% { transform: translateX(25vw) translateY(-18px); }
+  50% { transform: translateX(50vw) translateY(10px); }
+  75% { transform: translateX(75vw) translateY(-12px); }
+  100% { transform: translateX(110vw) translateY(0); }
+}
+@keyframes flotar { 50% { transform: translateY(-14px); } }
+@keyframes saltito { 0% { transform: scale(1); } 40% { transform: scale(1.06) rotate(-2deg); } 100% { transform: scale(1); } }
+@keyframes caer { to { transform: translateY(110vh) rotate(540deg); } }
+
+/* ---------- Estructura ---------- */
+
+.cabecera, main, .barra, .visor, .toast { position: relative; z-index: 1; }
+
+.cabecera { text-align: center; padding-block: 28px 8px; }
+.cabecera h1 {
+  margin: 0;
+  font-family: var(--fuente-titulo);
+  font-weight: 400;
+  font-size: clamp(2.1rem, 9vw, 3.4rem);
+  line-height: 1.05;
+  color: var(--naranja);
+  text-shadow: 3px 3px 0 var(--tinta), 0 0 24px rgba(255, 140, 26, .45);
+  letter-spacing: 1px;
+  text-wrap: balance;
+}
+.cabecera .subtitulo { margin: 6px 0 0; font-weight: 700; color: var(--suave); }
+.saludo { margin: 6px 0 0; font-weight: 800; color: var(--baba); min-height: 1.4em; }
+
+main { max-width: 980px; margin: 0 auto; }
+
+.tarjeta {
+  background: var(--superficie);
+  border: 3px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 22px;
+  max-width: 440px;
+  margin: 16px auto;
+  box-shadow: 0 8px 0 var(--tinta);
+}
+.tarjeta h2 { margin-top: 0; font-family: var(--fuente-titulo); font-weight: 400; font-size: 1.8rem; color: var(--naranja-claro); }
+.centrado { text-align: center; }
+.emoji-grande { font-size: 4rem; animation: flotar 3s ease-in-out infinite; }
+
+.instrucciones { padding-left: 0; list-style: none; display: grid; gap: 6px; }
+.instrucciones li { display: flex; gap: 10px; align-items: baseline; }
+
+label { display: block; font-weight: 800; margin: 14px 0 6px; }
+
+input:not([type="checkbox"]) {
+  width: 100%;
+  font: inherit;
+  font-size: 1.15rem;
+  padding: 13px 14px;
+  border-radius: 14px;
+  border: 3px solid var(--borde);
+  background: var(--cielo-1);
+  color: var(--texto);
+}
+input:focus-visible, button:focus-visible { outline: 3px solid var(--baba); outline-offset: 2px; }
+#codigo { text-transform: uppercase; letter-spacing: 3px; font-weight: 800; text-align: center; }
+
+.boton {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px;
+  font: inherit;
+  font-size: 1.15rem;
+  font-weight: 900;
+  border: none;
+  border-radius: 16px;
+  background: var(--naranja);
+  color: var(--tinta);
+  box-shadow: 0 5px 0 var(--naranja-oscuro);
+  cursor: pointer;
+}
+.boton:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--naranja-oscuro); }
+.boton:disabled { opacity: .45; cursor: default; transform: none; }
+.boton.baba { background: var(--baba); box-shadow: 0 5px 0 var(--baba-oscuro); }
+.boton.secundario { background: transparent; color: var(--naranja-claro); border: 3px solid var(--naranja); box-shadow: none; }
+.boton.enlace { background: none; box-shadow: none; color: var(--suave); font-weight: 700; text-decoration: underline; }
+
+.aviso { color: var(--suave); font-size: .95rem; margin-bottom: 0; text-align: center; }
+
+/* ---------- Lista de calabazas ---------- */
+
+.filtros {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 3;
+  padding-block: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: linear-gradient(var(--cielo-1) 80%, transparent);
+}
+.solo-elegidas { display: flex; align-items: center; gap: 10px; margin: 0; font-weight: 700; color: var(--suave); }
+.solo-elegidas input { width: 22px; height: 22px; accent-color: var(--naranja); }
+
+.rejilla {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+@media (min-width: 600px) { .rejilla { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 860px) { .rejilla { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.calabaza {
+  position: relative;
+  background: var(--superficie);
+  border: 4px solid var(--borde);
+  border-radius: var(--radio);
+  overflow: hidden;
+  box-shadow: 0 6px 0 var(--tinta);
+  transition: border-color .15s, box-shadow .15s;
+}
+.calabaza.elegida { border-color: var(--naranja); box-shadow: 0 6px 0 var(--tinta), 0 0 22px rgba(255, 140, 26, .55); animation: saltito .35s ease-out; }
+.calabaza.bloqueada { opacity: .45; }
+
+.calabaza .foto {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  background: var(--cielo-1);
+  border: none;
+  padding: 0;
+  cursor: zoom-in;
+}
+.calabaza .sin-foto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 4rem;
+  cursor: default;
+  background: radial-gradient(circle at 50% 60%, var(--superficie-2), var(--cielo-1));
+}
+
+.calabaza .numero {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: var(--luna);
+  color: var(--tinta);
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: .95rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.calabaza .sello {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-size: 1.8rem;
+  display: none;
+  filter: drop-shadow(0 2px 0 var(--tinta));
+}
+.calabaza.elegida .sello { display: block; }
+
+.calabaza .info { padding: 10px 12px 0; }
+.calabaza .nombre { margin: 0; font-weight: 900; font-size: 1rem; overflow-wrap: anywhere; }
+.calabaza .autor { margin: 0; color: var(--suave); font-size: .9rem; overflow-wrap: anywhere; }
+
+.calabaza .votar {
+  display: block;
+  width: calc(100% - 24px);
+  margin: 10px 12px 12px;
+  padding: 10px;
+  font: inherit;
+  border-radius: 12px;
+  border: 3px solid var(--naranja);
+  background: transparent;
+  color: var(--naranja-claro);
+  font-weight: 900;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.calabaza.elegida .votar { background: var(--naranja); color: var(--tinta); }
+.calabaza .votar:disabled { border-color: var(--borde); color: var(--suave); cursor: default; }
+
+.vacio { text-align: center; color: var(--suave); font-weight: 700; }
+
+/* ---------- Barra inferior (cubo de caramelos) ---------- */
+
+.barra {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  background: var(--superficie);
+  border-top: 4px solid var(--naranja);
+}
+.contador { flex: 1; min-width: 0; }
+.contador .texto { font-weight: 800; font-size: 1.05rem; }
+.contador strong { font-family: var(--fuente-titulo); font-weight: 400; font-size: 1.5rem; color: var(--naranja-claro); font-variant-numeric: tabular-nums; }
+.progreso { height: 10px; margin-top: 4px; border-radius: 999px; background: var(--cielo-1); overflow: hidden; }
+.progreso span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--naranja), var(--naranja-claro)); border-radius: inherit; transition: width .25s; }
+.contador.lleno .progreso span { background: var(--baba); }
+.barra .boton { width: auto; margin: 0; padding: 12px 18px; flex-shrink: 0; }
+
+/* ---------- Diálogos ---------- */
+
+.visor {
+  background: var(--superficie);
+  color: var(--texto);
+  border: 4px solid var(--naranja);
+  border-radius: var(--radio);
+  padding: 14px;
+  width: min(92vw, 640px);
+}
+.visor::backdrop { background: rgba(20, 6, 40, .85); }
+.visor img { width: 100%; max-height: 65vh; object-fit: contain; border-radius: 12px; }
+.visor p { margin: 8px 0 0; font-weight: 800; }
+.visor h2 { margin: 0 0 6px; font-family: var(--fuente-titulo); font-weight: 400; color: var(--naranja-claro); }
+.visor .botones { display: flex; gap: 10px; }
+.visor .botones .boton { margin-top: 14px; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%) translateY(20px);
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  background: var(--luna);
+  color: var(--tinta);
+  padding: 10px 18px;
+  border-radius: 14px;
+  font-weight: 800;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s, transform .2s;
+  z-index: 10;
+}
+.toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.error { background: var(--error); }
+
+.caramelo { position: fixed; top: -40px; z-index: 20; font-size: 28px; pointer-events: none; animation: caer 2.2s ease-in forwards; }
+
+/* ---------- Resultados ---------- */
+
+.resumen { color: var(--suave); text-align: center; font-weight: 700; }
+.ranking { padding-left: 0; list-style: none; counter-reset: puesto; }
+.ranking li {
+  counter-increment: puesto;
+  display: grid;
+  grid-template-columns: 2.4em 56px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-bottom: 2px dashed var(--borde);
+}
+.ranking li::before { content: counter(puesto) "º"; font-family: var(--fuente-titulo); font-size: 1.3rem; color: var(--naranja-claro); }
+.ranking li:nth-child(1)::before { content: "🥇"; }
+.ranking li:nth-child(2)::before { content: "🥈"; }
+.ranking li:nth-child(3)::before { content: "🥉"; }
+.ranking img, .ranking .mini { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; background: var(--cielo-1); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; }
+.ranking .votos { font-weight: 900; font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.ranking .titulo { overflow-wrap: anywhere; font-weight: 800; }
+.ranking .titulo small { display: block; color: var(--suave); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .murcielago { display: none; }
+}
