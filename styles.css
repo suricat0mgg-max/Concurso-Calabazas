@@ -278,11 +278,13 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--baba); outl
   line-height: 1;
   cursor: pointer;
 }
+.calabaza.elegida .cuenta { opacity: 1; }
 .calabaza .controles button:disabled { background: var(--borde); color: var(--suave); cursor: default; }
 .calabaza .cuenta {
   flex: 1;
   min-width: 0;
   text-align: center;
+  opacity: .55;
   font-family: var(--fuente-titulo);
   font-size: 1.25rem;
   color: var(--naranja-claro);
@@ -294,23 +296,6 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--baba); outl
 }
 
 
-.calabaza .votar {
-  display: block;
-  width: calc(100% - 8px);
-  margin: 4px;
-  padding: 5px 1px;
-  font: inherit;
-  border-radius: 8px;
-  border: 2px solid var(--naranja);
-  background: transparent;
-  color: var(--naranja-claro);
-  font-weight: 900;
-  font-size: .72rem;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.calabaza.elegida .votar { background: var(--naranja); color: var(--tinta); }
-.calabaza .votar:disabled { border-color: var(--borde); color: var(--suave); cursor: default; }
 
 .vacio { text-align: center; color: var(--suave); font-weight: 700; }
 

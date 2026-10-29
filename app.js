@@ -497,12 +497,6 @@
       numero.className = 'numero';
       numero.textContent = c.id;
 
-      const votar = document.createElement('button');
-      votar.type = 'button';
-      votar.className = 'votar';
-      votar.setAttribute('aria-label', 'Dar un voto a la calabaza ' + c.id);
-      votar.addEventListener('click', () => cambiar(c.id, +1));
-
       const controles = document.createElement('div');
       controles.className = 'controles';
       const menos = document.createElement('button');
@@ -518,11 +512,11 @@
       mas.type = 'button';
       mas.className = 'mas';
       mas.textContent = '+';
-      mas.setAttribute('aria-label', 'Dar otro voto a la calabaza ' + c.id);
+      mas.setAttribute('aria-label', 'Dar un voto a la calabaza ' + c.id);
       mas.addEventListener('click', () => cambiar(c.id, +1));
       controles.append(menos, cuenta, mas);
 
-      li.append(foto, numero, votar, controles);
+      li.append(foto, numero, controles);
       lista.appendChild(li);
     });
     actualizar();
@@ -539,14 +533,10 @@
       const c = estado.calabazas.find((x) => x.id === li.dataset.id);
       const n = estado.seleccion.get(c.id) || 0;
       const elegida = n > 0;
-      const boton = li.querySelector('.votar');
       li.classList.toggle('elegida', elegida);
       li.classList.toggle('bloqueada', lleno && !elegida);
-      boton.hidden = elegida;
-      boton.disabled = lleno;
-      boton.textContent = lleno ? 'Completo' : 'Votar';
-      li.querySelector('.controles').hidden = !elegida;
       li.querySelector('.cuenta').textContent = n;
+      li.querySelector('.menos').disabled = !elegida;
       li.querySelector('.mas').disabled = lleno;
 
       const visible = (!filtro || c.id.startsWith(filtro)) && (!soloElegidas || elegida);
