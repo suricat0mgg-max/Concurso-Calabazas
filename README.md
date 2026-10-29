@@ -14,40 +14,36 @@ Abre `index.html` en el navegador. Si `config.js` no tiene URL, funciona en modo
 - Código de docente: `DEMO`
 - Resultados: entra con el código `ADMIN`
 
-## Puesta en marcha
+## Puesta en marcha (unos 10 minutos, desde un ordenador)
 
-### 1. Hoja de cálculo y backend
-
-1. Crea una hoja de cálculo nueva en Google Sheets.
-2. Menú **Extensiones → Apps Script**. Borra el contenido y pega `apps-script/Code.gs`.
-3. Al principio del archivo ajusta:
+1. Entra en https://sheets.new con tu cuenta de Google. Se crea una hoja de cálculo vacía.
+   Ponle un nombre, por ejemplo «Concurso de Calabazas».
+2. Menú **Extensiones → Apps Script**. Se abre el editor en otra pestaña.
+3. Borra todo lo que haya y pega el contenido de
+   [`apps-script/Code.gs`](apps-script/Code.gs) (botón «Copy raw file» en GitHub).
+4. Arriba del todo cambia, si hace falta:
+   - `CANTIDAD_CALABAZAS`: cuántas calabazas hay (se numeran del 1 a ese número).
    - `CANTIDAD_DOCENTES`: cuántas personas pueden votar.
-   - `MAX_VOTOS`: cuántas calabazas puede elegir cada una (27).
-4. Selecciona la función `configurar` y pulsa **Ejecutar** (acepta los permisos).
-   Se crean las hojas `Calabazas`, `Docentes`, `Votos` y `Admin`, se generan los códigos de los
-   docentes y un **código de administración** (hoja `Admin`) para ver los resultados.
-5. Rellena las hojas:
-   - **Calabazas:** `numero` (1, 2, 3…) y `foto`.
-     En `foto` puedes poner cualquier URL de imagen o un enlace de Google Drive
-     (el archivo debe estar compartido como "Cualquier persona con el enlace").
-   - **Docentes:** ya tiene un código por docente. Escribe al lado el `nombre` de cada uno y
-     reparte los códigos. Solo esos códigos pueden votar, y cada uno vota una sola vez
-     (si vuelve a enviar, se reemplaza su voto anterior).
-     Si necesitas más, sube `CANTIDAD_DOCENTES` y usa el menú **🎃 Concurso → Generar códigos de docentes**.
-6. **Implementar → Nueva implementación → Aplicación web**:
-   - Ejecutar como: *Yo*
-   - Quién tiene acceso: *Cualquier usuario*
-7. Copia la URL que termina en `/exec`.
+   - `MAX_VOTOS`: cuántas calabazas puede elegir cada docente (27).
+5. Pulsa el icono de guardar 💾. En la lista de funciones de arriba elige **configurar** y pulsa **Ejecutar**.
+   Google pedirá permiso: **Revisar permisos → tu cuenta → Configuración avanzada →
+   Ir a (proyecto) → Permitir**. Es normal: el script solo usa esta hoja.
+6. **Implementar → Nueva implementación** → en el engranaje elige **Aplicación web**:
+   - Ejecutar como: **Yo**
+   - Quién tiene acceso: **Cualquier usuario**
+   - Pulsa **Implementar** y copia la **URL de la aplicación web** (termina en `/exec`).
+7. Pega esa URL en `config.js` → `API_URL` (o pásasela a quien mantenga la página).
+   La página se vuelve a publicar sola en https://suricat0mgg-max.github.io/Concurso-Calabazas/
 
-### 2. Página
+En la hoja de cálculo tendrás:
+- **Docentes:** un código por docente. Escribe al lado el nombre de cada uno y reparte los códigos.
+- **Admin:** el código de administración para ver los resultados. No lo compartas.
+- **Votos:** una fila por docente con las calabazas que ha elegido.
 
-1. Pega la URL en `config.js` → `API_URL`.
-2. La página ya está publicada en https://suricat0mgg-max.github.io/Concurso-Calabazas/ y se
-   actualiza sola con cada cambio (el flujo `.github/workflows/pages.yml` la copia a la rama `gh-pages`).
-3. Comparte el enlace (o un código QR) con los docentes.
-
-> Si cambias `Code.gs`, vuelve a **Implementar → Gestionar implementaciones → Editar → Nueva versión**
-> para que los cambios se apliquen en la misma URL.
+> Si cambias algo en `Code.gs` (por ejemplo el número de calabazas), guarda y ve a
+> **Implementar → Gestionar implementaciones → ✏️ Editar → Versión: Nueva versión → Implementar**.
+> La URL no cambia. Para añadir más docentes, sube `CANTIDAD_DOCENTES` y usa el menú
+> **🎃 Concurso → Generar códigos de docentes** de la hoja.
 
 ## Durante y después del concurso
 

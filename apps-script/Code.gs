@@ -2,7 +2,6 @@
  * Backend del Concurso de Calabazas (Google Apps Script + Google Sheets).
  *
  * Hojas que usa (se crean con la función `configurar`):
- *   Calabazas: numero | foto
  *   Admin:     el código de administración (solo lo ve quien tiene la hoja)
  *   Docentes:  codigo | nombre
  *   Votos:     codigo | nombre | fecha | calabazas (ids separados por coma)
@@ -21,8 +20,9 @@ const MAX_VOTOS = 27;
 const VOTACION_ABIERTA = true;
 // Número de docentes que pueden votar (lo usa generarCodigos).
 const CANTIDAD_DOCENTES = 30;
+// Número de calabazas del concurso: se numeran del 1 a este número.
+const CANTIDAD_CALABAZAS = 120;
 
-const HOJA_CALABAZAS = 'Calabazas';
 const HOJA_DOCENTES = 'Docentes';
 const HOJA_VOTOS = 'Votos';
 const HOJA_RESULTADOS = 'Resultados';
@@ -187,12 +187,7 @@ function esAdmin_(codigo) {
 // ---------- Utilidades ----------
 
 function leerCalabazas_() {
-  return filas_(HOJA_CALABAZAS)
-    .filter((f) => String(f[0]).trim() !== '')
-    .map((f) => ({
-      id: String(f[0]).trim(),
-      foto: urlFoto_(String(f[1] || '').trim()),
-    }));
+  return Array.from({ length: CANTIDAD_CALABAZAS }, (_, i) => ({ id: String(i + 1), foto: '' }));
 }
 
 function buscarDocente_(codigo) {
@@ -215,12 +210,6 @@ function buscarVoto_(codigo) {
     }
   }
   return null;
-}
-
-// Convierte enlaces de Google Drive en URLs que se pueden mostrar como imagen.
-function urlFoto_(url) {
-  const m = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=\w+&)?id=)([\w-]+)/);
-  return m ? 'https://lh3.googleusercontent.com/d/' + m[1] + '=w800' : url;
 }
 
 function normalizar_(texto) {
@@ -256,12 +245,6 @@ function responder_(fn) {
 function configurar() {
   const libro = SpreadsheetApp.getActive();
   const plantillas = {
-    [HOJA_CALABAZAS]: [
-      ['numero', 'foto'],
-      ['1', ''],
-      ['2', ''],
-      ['3', ''],
-    ],
     [HOJA_DOCENTES]: [['codigo', 'nombre']],
     [HOJA_VOTOS]: [['codigo', 'nombre', 'fecha', 'calabazas']],
   };
