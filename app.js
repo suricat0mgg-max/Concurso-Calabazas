@@ -31,10 +31,9 @@
   }
 
   function comprobarNombre(texto) {
-    const partes = normalizarNombre(texto).split(' ').filter((p) => p.length >= 2);
-    if (!partes.length) throw new Error('Escribe tu nombre');
-    if (partes.length < 2) throw new Error('Escribe también tu apellido, por si hay otro docente que se llame igual');
-    return normalizarNombre(texto);
+    const nombre = normalizarNombre(texto);
+    if (nombre.replace(/ /g, '').length < 2) throw new Error('Escribe tu nombre');
+    return nombre;
   }
 
   function esCodigoAdminDemo(texto) {

@@ -1,7 +1,7 @@
 # 🎃 Concurso de Calabazas
 
 Página web para que los docentes voten desde el móvil las calabazas de Halloween.
-Cada docente entra con su **nombre y apellido** y puede elegir **hasta 27 calabazas**
+Cada docente entra con su **nombre** y puede elegir **hasta 27 calabazas**
 (sin repetir). Si vuelve a entrar con el mismo nombre, ve su voto y puede cambiarlo.
 Solo quien tiene el código de administración ve los resultados y quién ha votado.
 
@@ -12,7 +12,7 @@ Solo quien tiene el código de administración ve los resultados y quién ha vot
 
 Abre `index.html` en el navegador. Si `config.js` no tiene URL, funciona en modo demo:
 
-- Para votar: escribe cualquier nombre y apellido
+- Para votar: escribe cualquier nombre
 - Resultados: entra con el código `ADMIN`
 
 ## Guardar los votos sin Google (almacén kvdb.io)
