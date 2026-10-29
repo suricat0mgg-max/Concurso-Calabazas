@@ -474,6 +474,9 @@
         foto = document.createElement('div');
         foto.className = 'foto sin-foto';
         foto.textContent = '🎃';
+        foto.setAttribute('aria-hidden', 'true');
+        // Tocar la calabaza también la vota, que el botón es pequeño.
+        foto.addEventListener('click', () => alternar(c.id));
       }
 
       const numero = document.createElement('span');
