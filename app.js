@@ -8,7 +8,7 @@
 
   const estado = {
     calabazas: [],
-    maxVotos: 27,
+    maxVotos: 26,
     abierta: true,
     codigo: null,
     nombre: '',
@@ -71,11 +71,11 @@
 
   // Modo demostración: datos de ejemplo guardados en este navegador.
   function demo(datos) {
-    const calabazas = Array.from({ length: 120 }, (_, i) => ({ id: String(i + 1), foto: '' }));
+    const calabazas = Array.from({ length: 200 }, (_, i) => ({ id: String(i + 1), foto: '' }));
     const votos = JSON.parse(local.get('demo-votos') || '{}');
     switch (datos.accion) {
       case 'calabazas':
-        return { calabazas, maxVotos: 27, abierta: true };
+        return { calabazas, maxVotos: 26, abierta: true };
       case 'entrar': {
         if (esCodigoAdminDemo(datos.codigo)) return { admin: true };
         const guardado = votos[comprobarNombre(datos.codigo)];
@@ -83,7 +83,7 @@
       }
       case 'votar':
         if (!datos.ids.length) throw new Error('Elige al menos una calabaza');
-        if (datos.ids.length > 27) throw new Error('Puedes votar como máximo 27 calabazas');
+        if (datos.ids.length > 26) throw new Error('Puedes votar como máximo 26 calabazas');
         votos[comprobarNombre(datos.codigo)] = { nombre: nombreBonito(datos.codigo), ids: datos.ids };
         local.set('demo-votos', JSON.stringify(votos));
         return { ok: true, total: datos.ids.length };
@@ -222,8 +222,8 @@
   const tienda = ALMACEN ? crearAdaptador(ALMACEN) : null;
 
   async function almacen(datos) {
-    const maxVotos = CONFIG.MAX_VOTOS || 27;
-    const calabazas = Array.from({ length: CONFIG.CALABAZAS || 120 }, (_, i) => ({ id: String(i + 1), foto: '' }));
+    const maxVotos = CONFIG.MAX_VOTOS || 26;
+    const calabazas = Array.from({ length: CONFIG.CALABAZAS || 200 }, (_, i) => ({ id: String(i + 1), foto: '' }));
     const texto = String(datos.codigo || datos.clave || '').trim();
     const esAdmin = async () => !!texto && (await huella('admin:' + texto.toUpperCase())) === CONFIG.ADMIN;
     const claveVoto = () => huella('voto:' + comprobarNombre(texto));
