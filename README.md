@@ -1,8 +1,9 @@
 # 🎃 Concurso de Calabazas
 
 Página web para que los docentes voten desde el móvil las calabazas de Halloween.
-Cada docente entra con su código personal y puede elegir **hasta 27 calabazas**
-(sin repetir). Puede cambiar sus votos mientras la votación siga abierta.
+Cada docente entra con su **nombre y apellido** y puede elegir **hasta 27 calabazas**
+(sin repetir). Si vuelve a entrar con el mismo nombre, ve su voto y puede cambiarlo.
+Solo quien tiene el código de administración ve los resultados y quién ha votado.
 
 - **Frontend:** `index.html`, `styles.css`, `app.js`, `config.js` (HTML estático, sin dependencias).
 - **Backend:** `apps-script/Code.gs` (Google Apps Script) que guarda todo en una hoja de cálculo de Google.
@@ -11,8 +12,16 @@ Cada docente entra con su código personal y puede elegir **hasta 27 calabazas**
 
 Abre `index.html` en el navegador. Si `config.js` no tiene URL, funciona en modo demo:
 
-- Código de docente: `DEMO`
+- Para votar: escribe cualquier nombre y apellido
 - Resultados: entra con el código `ADMIN`
+
+## Guardar los votos sin Google (almacén kvdb.io)
+
+En `config.js` pon `ALMACEN_URL` (la dirección del almacén en kvdb.io), `CALABAZAS`,
+`MAX_VOTOS` y `ADMIN`, la huella del código de administración que genera
+`node herramientas/generar-codigos.js`. El código en sí no se sube al repositorio.
+
+> La opción de Google de abajo sigue usando códigos de docente en lugar de nombres.
 
 ## Puesta en marcha (unos 10 minutos, desde un ordenador)
 
