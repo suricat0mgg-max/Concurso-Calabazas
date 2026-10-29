@@ -637,6 +637,7 @@
     estado.claveAdmin = clave;
     $('saludo').textContent = 'Modo organización 🏆';
     const votantes = datos.votantes.slice().sort((a, b) => a.localeCompare(b, 'es'));
+    estado.votantes = votantes.length;
     $('resumen').textContent = (votantes.length === 1 ? 'Ha votado 1 docente.' : 'Han votado ' + votantes.length + ' docentes.') +
       (DEMO ? ' (Versión de prueba: solo cuenta los votos de este móvil.)' : '');
     $('votantes').textContent = votantes.length ? 'Quién ha votado: ' + votantes.join(', ') + '.' : '';
@@ -768,7 +769,12 @@
     const al = (id, evento, fn) => { const el = $(id); if (el) el.addEventListener(evento, fn); };
     al('btn-actualizar', 'click', actualizarResultados);
     al('btn-salir-admin', 'click', salir);
-    al('btn-borrar', 'click', () => $('borrar').showModal());
+    al('btn-borrar', 'click', () => {
+      const n = estado.votantes || 0;
+      $('borrar-texto').textContent = (n === 1 ? 'Se borrará el voto de 1 docente' : 'Se borrarán los votos de ' + n + ' docentes') +
+        ' y la votación empezará de cero.';
+      $('borrar').showModal();
+    });
     al('borrar-si', 'click', borrarVotos);
     al('borrar-no', 'click', () => $('borrar').close());
     al('btn-enviar', 'click', pedirConfirmacion);
