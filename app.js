@@ -171,7 +171,7 @@
   // ---------- Interfaz ----------
 
   function mostrar(pantalla) {
-    ['entrar', 'votar', 'gracias', 'resultados'].forEach((p) => {
+    ['entrar', 'votar', 'gracias', 'resultados', 'preparar'].forEach((p) => {
       $('pantalla-' + p).hidden = p !== pantalla;
     });
     $('barra').hidden = pantalla !== 'votar';
@@ -417,6 +417,64 @@
     }
   }
 
+  // Crea un almacén en kvdb.io desde el móvil de quien organiza y prueba que se
+  // puede escribir, leer y listar. El resultado se copia para ponerlo en config.js.
+  async function prepararAlmacen() {
+    const boton = $('btn-preparar');
+    const estadoTexto = $('preparar-estado');
+    const paso = (texto) => (estadoTexto.textContent = texto);
+    ocupado(boton, 'Preparando…');
+    $('preparar-ok').hidden = true;
+    let etapa = 'crear el almacén';
+    try {
+      paso('Creando el almacén…');
+      let r = await fetch('https://kvdb.io/', { method: 'POST' });
+      const id = (await r.text()).trim();
+      if (!r.ok || !/^[A-Za-z0-9]+$/.test(id)) throw new Error('respuesta ' + r.status + ': ' + id.slice(0, 120));
+      const base = 'https://kvdb.io/' + id;
+
+      etapa = 'guardar un voto de prueba';
+      paso('Guardando un voto de prueba…');
+      r = await fetch(base + '/prueba', { method: 'PUT', body: JSON.stringify({ nombre: 'Prueba', ids: ['1'] }) });
+      if (!r.ok) throw new Error('respuesta ' + r.status + ': ' + (await r.text()).slice(0, 120));
+
+      etapa = 'leer el voto de prueba';
+      paso('Leyendo el voto de prueba…');
+      r = await fetch(base + '/prueba');
+      const leido = JSON.parse(await r.text());
+      if (!leido || leido.nombre !== 'Prueba') throw new Error('no se leyó lo mismo que se guardó');
+
+      etapa = 'listar los votos';
+      paso('Listando los votos…');
+      r = await fetch(base + '/?values=true&format=json');
+      const lista = JSON.parse(await r.text());
+      if (!Array.isArray(lista) || !lista.some((f) => f[0] === 'prueba')) throw new Error('la lista no tiene el voto de prueba');
+
+      etapa = 'borrar el voto de prueba';
+      r = await fetch(base + '/prueba', { method: 'DELETE' });
+      if (!r.ok) throw new Error('respuesta ' + r.status);
+
+      paso('✅ Todo funciona.');
+      $('preparar-texto').value = 'ALMACEN ' + base;
+      $('preparar-ok').hidden = false;
+    } catch (e) {
+      paso('❌ Falló al ' + etapa + ' (' + (e.message || 'sin conexión') + '). Haz una captura y envíasela a Claude.');
+    } finally {
+      ocupado(boton, null);
+    }
+  }
+
+  async function copiarTexto() {
+    const campo = $('preparar-texto');
+    try {
+      await navigator.clipboard.writeText(campo.value);
+      avisar('Copiado. Pégaselo a Claude.');
+    } catch (e) {
+      campo.select();
+      avisar('Mantén el dedo sobre el texto y pulsa Copiar.');
+    }
+  }
+
   async function iniciar() {
     $('demo-aviso').hidden = !DEMO;
 
@@ -444,6 +502,14 @@
     al('btn-salir', 'click', salir);
     al('buscar', 'input', actualizar);
     al('solo-elegidas', 'change', actualizar);
+
+    window.addEventListener('hashchange', () => location.reload());
+    if (location.hash === '#preparar') {
+      al('btn-preparar', 'click', prepararAlmacen);
+      al('btn-copiar', 'click', copiarTexto);
+      mostrar('preparar');
+      return;
+    }
 
     try {
       const datos = await llamar('GET');
