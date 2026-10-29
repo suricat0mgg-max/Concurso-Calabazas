@@ -2,11 +2,12 @@
  * Backend del Concurso de Calabazas (Google Apps Script + Google Sheets).
  *
  * Hojas que usa (se crean con la función `configurar`):
+ *   Config:    número de calabazas, de docentes, votos por docente y si está abierta
  *   Admin:     el código de administración (solo lo ve quien tiene la hoja)
  *   Docentes:  codigo | nombre
  *   Votos:     codigo | nombre | fecha | calabazas (ids separados por coma)
  *
- * Cada docente tiene un código personal. Puede elegir hasta MAX_VOTOS
+ * Cada docente tiene un código personal. Puede elegir hasta los votos que diga Config
  * calabazas distintas y cambiar su selección mientras la votación esté abierta.
  * Solo pueden votar los códigos de la hoja Docentes (genéralos con generarCodigos).
  *
@@ -16,17 +17,34 @@
  * este archivo, para que no aparezca en el repositorio.
  */
 
-const MAX_VOTOS = 27;
-const VOTACION_ABIERTA = true;
-// Número de docentes que pueden votar (lo usa generarCodigos).
-const CANTIDAD_DOCENTES = 30;
-// Número de calabazas del concurso: se numeran del 1 a este número.
-const CANTIDAD_CALABAZAS = 120;
+// Valores iniciales de la hoja Config. Después se cambian en la hoja, no aquí.
+const CONFIG_INICIAL = [
+  ['Calabazas', 120],
+  ['Docentes', 30],
+  ['Votos por docente', 27],
+  ['Votación abierta', 'SÍ'],
+];
 
 const HOJA_DOCENTES = 'Docentes';
 const HOJA_VOTOS = 'Votos';
 const HOJA_RESULTADOS = 'Resultados';
 const HOJA_ADMIN = 'Admin';
+const HOJA_CONFIG = 'Config';
+
+function config_() {
+  const valores = {};
+  filas_(HOJA_CONFIG).forEach((f) => (valores[String(f[0]).trim()] = f[1]));
+  const numero = (clave, porDefecto) => {
+    const n = parseInt(valores[clave], 10);
+    return n > 0 ? n : porDefecto;
+  };
+  return {
+    calabazas: numero('Calabazas', 120),
+    docentes: numero('Docentes', 30),
+    maxVotos: numero('Votos por docente', 27),
+    abierta: !/^\s*no\s*$/i.test(String(valores['Votación abierta'] || 'SÍ')),
+  };
+}
 
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -41,7 +59,8 @@ function doGet(e) {
   return responder_(() => {
     const accion = (e && e.parameter && e.parameter.accion) || 'calabazas';
     if (accion === 'calabazas') {
-      return { calabazas: leerCalabazas_(), maxVotos: MAX_VOTOS, abierta: VOTACION_ABIERTA };
+      const cfg = config_();
+      return { calabazas: leerCalabazas_(), maxVotos: cfg.maxVotos, abierta: cfg.abierta };
     }
     throw new Error('Acción desconocida');
   });
@@ -75,7 +94,8 @@ function entrar_(codigo) {
 }
 
 function votar_(codigo, ids) {
-  if (!VOTACION_ABIERTA) throw new Error('La votación está cerrada');
+  const cfg = config_();
+  if (!cfg.abierta) throw new Error('La votación está cerrada');
   const docente = buscarDocente_(codigo);
 
   if (!Array.isArray(ids)) throw new Error('Selección no válida');
@@ -83,7 +103,7 @@ function votar_(codigo, ids) {
   const unicos = [...new Set(ids.map(String))];
   if (unicos.some((id) => !validos.has(id))) throw new Error('Hay calabazas que no existen');
   if (unicos.length === 0) throw new Error('Elige al menos una calabaza');
-  if (unicos.length > MAX_VOTOS) throw new Error('Puedes votar como máximo ' + MAX_VOTOS + ' calabazas');
+  if (unicos.length > cfg.maxVotos) throw new Error('Puedes votar como máximo ' + cfg.maxVotos + ' calabazas');
 
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
@@ -142,7 +162,7 @@ function verResultados() {
 }
 
 /**
- * Rellena la hoja Docentes hasta tener CANTIDAD_DOCENTES códigos únicos.
+ * Rellena la hoja Docentes hasta tener tantos códigos como indica Config.
  * No borra los que ya existen. Escribe el nombre de cada docente al lado de su código.
  */
 function generarCodigos() {
@@ -150,7 +170,8 @@ function generarCodigos() {
   const existentes = new Set(filas_(HOJA_DOCENTES).map((f) => normalizar_(f[0])).filter(Boolean));
   const letras = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const nuevos = [];
-  while (existentes.size < CANTIDAD_DOCENTES) {
+  const total = config_().docentes;
+  while (existentes.size < total) {
     let codigo = '';
     for (let i = 0; i < 6; i++) codigo += letras[Math.floor(Math.random() * letras.length)];
     if (!existentes.has(codigo)) {
@@ -187,7 +208,7 @@ function esAdmin_(codigo) {
 // ---------- Utilidades ----------
 
 function leerCalabazas_() {
-  return Array.from({ length: CANTIDAD_CALABAZAS }, (_, i) => ({ id: String(i + 1), foto: '' }));
+  return Array.from({ length: config_().calabazas }, (_, i) => ({ id: String(i + 1), foto: '' }));
 }
 
 function buscarDocente_(codigo) {
@@ -245,6 +266,7 @@ function responder_(fn) {
 function configurar() {
   const libro = SpreadsheetApp.getActive();
   const plantillas = {
+    [HOJA_CONFIG]: [['Ajuste', 'Valor']].concat(CONFIG_INICIAL),
     [HOJA_DOCENTES]: [['codigo', 'nombre']],
     [HOJA_VOTOS]: [['codigo', 'nombre', 'fecha', 'calabazas']],
   };
