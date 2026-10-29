@@ -24,6 +24,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           mkdir /tmp/sitio && cp index.html styles.css app.js config.js /tmp/sitio/ && touch /tmp/sitio/.nojekyll
+          # Cambia la versión de los archivos en cada publicación para que los móviles no usen una copia vieja.
+          sed -i "s/?v=VERSION/?v=${GITHUB_SHA::7}/g" /tmp/sitio/index.html
           git fetch origin gh-pages
           git checkout gh-pages
           git rm -rq --ignore-unmatch . && cp -a /tmp/sitio/. .
