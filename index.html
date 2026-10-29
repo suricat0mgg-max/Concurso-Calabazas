@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chewy&family=Nunito:wght@600;700;800;900&display=swap">
-  <link rel="stylesheet" href="styles.css?v=f7459c5">
+  <link rel="stylesheet" href="styles.css?v=9d9ab6c">
 </head>
 <body>
 <!--contenido-->
@@ -111,6 +111,15 @@
     <form method="dialog"><button class="boton secundario">Cerrar</button></form>
   </dialog>
 
+  <dialog id="duplicado" class="visor">
+    <h2 id="duplicado-titulo">Ese nombre ya ha votado</h2>
+    <p>Si eres tú, puedes entrar y cambiar tu voto. Si eres otra persona con el mismo nombre, vuelve atrás y añade la inicial de tu apellido.</p>
+    <div class="botones">
+      <button id="duplicado-no" class="boton secundario" type="button">No soy yo</button>
+      <button id="duplicado-si" class="boton" type="button">Sí, soy yo</button>
+    </div>
+  </dialog>
+
   <dialog id="confirmar" class="visor">
     <h2>¿Enviamos tus votos?</h2>
     <p id="confirmar-texto"></p>
@@ -141,7 +150,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <!--/contenido-->
 
-  <script src="config.js?v=f7459c5"></script>
-  <script src="app.js?v=f7459c5"></script>
+  <script src="config.js?v=9d9ab6c"></script>
+  <script src="app.js?v=9d9ab6c"></script>
 </body>
 </html>
