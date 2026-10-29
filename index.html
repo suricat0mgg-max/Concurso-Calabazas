@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chewy&family=Nunito:wght@600;700;800;900&display=swap">
-  <link rel="stylesheet" href="styles.css?v=916d89e">
+  <link rel="stylesheet" href="styles.css?v=749f7d3">
 </head>
 <body>
 <!--contenido-->
@@ -71,6 +71,9 @@
       <div class="tarjeta">
         <h2>Preparar la votación 🔧</h2>
         <p>Esto crea el almacén donde se guardarán los votos y comprueba que funciona. Solo hay que hacerlo una vez.</p>
+        <label for="preparar-email">Tu correo electrónico</label>
+        <input id="preparar-email" type="email" autocomplete="email" placeholder="tu@correo.com">
+        <p class="aviso">El servicio de almacenamiento (kvdb.io) lo pide para crear el almacén. Solo se envía a ese servicio.</p>
         <button id="btn-preparar" class="boton" type="button">Crear almacén</button>
         <p id="preparar-estado" class="aviso"></p>
         <div id="preparar-ok" hidden>
@@ -120,7 +123,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <!--/contenido-->
 
-  <script src="config.js?v=916d89e"></script>
-  <script src="app.js?v=916d89e"></script>
+  <script src="config.js?v=749f7d3"></script>
+  <script src="app.js?v=749f7d3"></script>
 </body>
 </html>
