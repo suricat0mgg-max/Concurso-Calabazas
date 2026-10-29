@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chewy&family=Nunito:wght@600;700;800;900&display=swap">
-  <link rel="stylesheet" href="styles.css?v=9d9ab6c">
+  <link rel="stylesheet" href="styles.css?v=bb9f208">
 </head>
 <body>
 <!--contenido-->
@@ -35,7 +35,7 @@
         <h2>¡Hora de votar!</h2>
         <ul class="instrucciones">
           <li><span aria-hidden="true">✏️</span> Escribe tu nombre.</li>
-          <li><span aria-hidden="true">🎃</span> Elige hasta <strong class="max-votos">26</strong> calabazas.</li>
+          <li><span aria-hidden="true">🎃</span> Reparte los <strong class="max-votos">26</strong> votos de tus alumnos. Puedes dar varios a la misma calabaza.</li>
           <li><span aria-hidden="true">🍬</span> Pulsa «Enviar votos». Puedes cambiarlos después.</li>
         </ul>
         <label for="codigo">Tu nombre</label>
@@ -49,7 +49,7 @@
     <section id="pantalla-votar" class="pantalla" hidden>
       <div class="filtros">
         <input id="buscar" type="search" inputmode="numeric" placeholder="🔍 Busca por número" aria-label="Buscar calabaza por número">
-        <label class="solo-elegidas" for="solo-elegidas"><input id="solo-elegidas" type="checkbox"> Ver solo mis elegidas</label>
+        <label class="solo-elegidas" for="solo-elegidas"><input id="solo-elegidas" type="checkbox"> Ver solo las que he votado</label>
       </div>
       <ul id="lista" class="rejilla"></ul>
       <p id="sin-resultados" class="vacio" hidden>No hay calabazas que coincidan 👀</p>
@@ -99,7 +99,7 @@
   <!-- Barra inferior con el contador y el botón de enviar -->
   <footer id="barra" class="barra" hidden>
     <div id="contador-caja" class="contador">
-      <div class="texto"><strong id="contador">0</strong> de <span class="max-votos">26</span> elegidas</div>
+      <div class="texto"><strong id="contador">0</strong> de <span class="max-votos">26</span> votos</div>
       <div class="progreso" aria-hidden="true"><span id="progreso"></span></div>
     </div>
     <button id="btn-enviar" class="boton baba" type="button" disabled>Enviar votos</button>
@@ -150,7 +150,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <!--/contenido-->
 
-  <script src="config.js?v=9d9ab6c"></script>
-  <script src="app.js?v=9d9ab6c"></script>
+  <script src="config.js?v=bb9f208"></script>
+  <script src="app.js?v=bb9f208"></script>
 </body>
 </html>

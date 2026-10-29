@@ -13,11 +13,25 @@
     abierta: true,
     codigo: null,
     nombre: '',
-    seleccion: new Set(),
-    enviada: new Set(),
+    // Votos repartidos: {idCalabaza: número de votos}. Un docente reparte los votos
+    // de sus alumnos, así que puede dar varios a la misma calabaza.
+    seleccion: new Map(),
+    enviada: new Map(),
   };
 
   const $ = (id) => document.getElementById(id);
+
+  // Un voto se guarda como lista con repeticiones: ['3', '3', '15'] = 2 a la 3 y 1 a la 15.
+  const aLista = (reparto) => [...reparto].flatMap(([id, n]) => Array(n).fill(id))
+    .sort((a, b) => Number(a) - Number(b));
+  const deLista = (ids) => {
+    const reparto = new Map();
+    (ids || []).forEach((id) => reparto.set(String(id), (reparto.get(String(id)) || 0) + 1));
+    return reparto;
+  };
+  const totalVotos = (reparto) => [...reparto.values()].reduce((s, n) => s + n, 0);
+  const mismoReparto = (a, b) => aLista(a).join(',') === aLista(b).join(',');
+  const plural = (n, uno, varios) => n + ' ' + (n === 1 ? uno : varios);
 
   // «  maría  López » y «Maria lopez» son la misma persona.
   function normalizarNombre(texto) {
@@ -84,8 +98,8 @@
         return { nombre: nombreBonito(datos.codigo), seleccion: (guardado && guardado.ids) || [] };
       }
       case 'votar':
-        if (!datos.ids.length) throw new Error('Elige al menos una calabaza');
-        if (datos.ids.length > 26) throw new Error('Puedes votar como máximo 26 calabazas');
+        if (!datos.ids.length) throw new Error('Reparte al menos un voto');
+        if (datos.ids.length > 26) throw new Error('Puedes repartir como máximo 26 votos');
         votos[comprobarNombre(datos.codigo)] = { nombre: nombreBonito(datos.codigo), ids: datos.ids };
         local.set('demo-votos', JSON.stringify(votos));
         return { ok: true, total: datos.ids.length };
@@ -345,12 +359,12 @@
         if (CONFIG.ABIERTA === false) throw new Error('La votación está cerrada');
         comprobarNombre(texto);
         const existen = new Set(calabazas.map((c) => c.id));
-        const ids = [...new Set(datos.ids.map(String))];
-        if (!ids.length) throw new Error('Elige al menos una calabaza');
-        if (ids.length > maxVotos) throw new Error('Puedes votar como máximo ' + maxVotos + ' calabazas');
+        const ids = datos.ids.map(String);
+        if (!ids.length) throw new Error('Reparte al menos un voto');
+        if (ids.length > maxVotos) throw new Error('Puedes repartir como máximo ' + maxVotos + ' votos');
         if (ids.some((id) => !existen.has(id))) throw new Error('Hay calabazas que no existen');
-        // «#3 #15 #120»: siempre es texto, también con una sola calabaza, para que
-        // la hoja no lo convierta en número y lo pierda al leerla.
+        // «#3 #3 #15»: un «#» por voto (aquí, 2 a la 3 y 1 a la 15). Siempre es texto,
+        // también con un solo voto, para que la hoja no lo convierta en número.
         await enviarRespuesta(nombreBonito(texto), ids.map((id) => '#' + id).join(' '));
         return { ok: true, total: ids.length };
       }
@@ -364,7 +378,7 @@
         if (!votos) throw new Error('Los resultados aún no están conectados. Míralos en el formulario, en «Respuestas».');
         const cuenta = {};
         const lista = Object.values(votos);
-        lista.forEach((v) => [...new Set(v.ids)].slice(0, maxVotos).forEach((id) => (cuenta[id] = (cuenta[id] || 0) + 1)));
+        lista.forEach((v) => v.ids.slice(0, maxVotos).forEach((id) => (cuenta[id] = (cuenta[id] || 0) + 1)));
         const ranking = calabazas.map((c) => Object.assign({}, c, { votos: cuenta[c.id] || 0 }))
           .sort((a, b) => b.votos - a.votos);
         return { ranking, votantes: lista.map((v) => v.nombre) };
@@ -392,9 +406,9 @@
         if (CONFIG.ABIERTA === false) throw new Error('La votación está cerrada');
         const clave = await claveVoto();
         const existen = new Set(calabazas.map((c) => c.id));
-        const ids = [...new Set(datos.ids.map(String))];
-        if (!ids.length) throw new Error('Elige al menos una calabaza');
-        if (ids.length > maxVotos) throw new Error('Puedes votar como máximo ' + maxVotos + ' calabazas');
+        const ids = datos.ids.map(String);
+        if (!ids.length) throw new Error('Reparte al menos un voto');
+        if (ids.length > maxVotos) throw new Error('Puedes repartir como máximo ' + maxVotos + ' votos');
         if (ids.some((id) => !existen.has(id))) throw new Error('Hay calabazas que no existen');
         const voto = { nombre: nombreBonito(texto), ids, fecha: new Date().toISOString() };
         await tienda.guardarVoto(clave, voto);
@@ -411,7 +425,7 @@
         for (const voto of await tienda.listarVotos()) {
           if (!voto || !Array.isArray(voto.ids)) continue;
           votantes.push(String(voto.nombre || '?'));
-          [...new Set(voto.ids.map(String))].slice(0, maxVotos).forEach((id) => (cuenta[id] = (cuenta[id] || 0) + 1));
+          voto.ids.map(String).slice(0, maxVotos).forEach((id) => (cuenta[id] = (cuenta[id] || 0) + 1));
         }
         const ranking = calabazas.map((c) => Object.assign({}, c, { votos: cuenta[c.id] || 0 }))
           .sort((a, b) => b.votos - a.votos);
@@ -475,32 +489,47 @@
         foto.className = 'foto sin-foto';
         foto.textContent = '🎃';
         foto.setAttribute('aria-hidden', 'true');
-        // Tocar la calabaza también la vota, que el botón es pequeño.
-        foto.addEventListener('click', () => alternar(c.id));
+        // Tocar la calabaza le suma un voto, que los botones son pequeños.
+        foto.addEventListener('click', () => cambiar(c.id, +1));
       }
 
       const numero = document.createElement('span');
       numero.className = 'numero';
       numero.textContent = c.id;
-      const sello = document.createElement('span');
-      sello.className = 'sello';
-      sello.setAttribute('aria-hidden', 'true');
-      sello.textContent = '⭐';
 
       const votar = document.createElement('button');
       votar.type = 'button';
       votar.className = 'votar';
-      votar.setAttribute('aria-label', 'Votar la calabaza ' + c.id);
-      votar.addEventListener('click', () => alternar(c.id));
+      votar.setAttribute('aria-label', 'Dar un voto a la calabaza ' + c.id);
+      votar.addEventListener('click', () => cambiar(c.id, +1));
 
-      li.append(foto, numero, sello, votar);
+      const controles = document.createElement('div');
+      controles.className = 'controles';
+      const menos = document.createElement('button');
+      menos.type = 'button';
+      menos.className = 'menos';
+      menos.textContent = '−';
+      menos.setAttribute('aria-label', 'Quitar un voto a la calabaza ' + c.id);
+      menos.addEventListener('click', () => cambiar(c.id, -1));
+      const cuenta = document.createElement('span');
+      cuenta.className = 'cuenta';
+      cuenta.setAttribute('aria-live', 'polite');
+      const mas = document.createElement('button');
+      mas.type = 'button';
+      mas.className = 'mas';
+      mas.textContent = '+';
+      mas.setAttribute('aria-label', 'Dar otro voto a la calabaza ' + c.id);
+      mas.addEventListener('click', () => cambiar(c.id, +1));
+      controles.append(menos, cuenta, mas);
+
+      li.append(foto, numero, votar, controles);
       lista.appendChild(li);
     });
     actualizar();
   }
 
   function actualizar() {
-    const total = estado.seleccion.size;
+    const total = totalVotos(estado.seleccion);
     const lleno = total >= estado.maxVotos;
     const filtro = $('buscar').value.trim();
     const soloElegidas = $('solo-elegidas').checked;
@@ -508,13 +537,17 @@
 
     document.querySelectorAll('.calabaza').forEach((li) => {
       const c = estado.calabazas.find((x) => x.id === li.dataset.id);
-      const elegida = estado.seleccion.has(c.id);
+      const n = estado.seleccion.get(c.id) || 0;
+      const elegida = n > 0;
       const boton = li.querySelector('.votar');
       li.classList.toggle('elegida', elegida);
       li.classList.toggle('bloqueada', lleno && !elegida);
-      boton.disabled = lleno && !elegida;
-      boton.textContent = elegida ? 'Elegida' : (lleno ? 'Completo' : 'Votar');
-      boton.setAttribute('aria-pressed', elegida);
+      boton.hidden = elegida;
+      boton.disabled = lleno;
+      boton.textContent = lleno ? 'Completo' : 'Votar';
+      li.querySelector('.controles').hidden = !elegida;
+      li.querySelector('.cuenta').textContent = n;
+      li.querySelector('.mas').disabled = lleno;
 
       const visible = (!filtro || c.id.startsWith(filtro)) && (!soloElegidas || elegida);
       li.hidden = !visible;
@@ -525,22 +558,22 @@
     $('contador').textContent = total;
     $('contador-caja').classList.toggle('lleno', lleno);
     $('progreso').style.width = Math.min(100, total / estado.maxVotos * 100) + '%';
-    const sinCambios = total === estado.enviada.size && [...estado.seleccion].every((id) => estado.enviada.has(id));
+    const sinCambios = mismoReparto(estado.seleccion, estado.enviada);
     $('btn-enviar').disabled = total === 0 || sinCambios || !estado.abierta;
     $('btn-enviar').textContent = estado.enviada.size ? 'Actualizar votos' : 'Enviar votos';
   }
 
-  function alternar(id) {
-    if (estado.seleccion.has(id)) {
-      estado.seleccion.delete(id);
-    } else if (estado.seleccion.size >= estado.maxVotos) {
-      avisar('¡Ya tienes ' + estado.maxVotos + '! Quita una para elegir otra.', true);
+  // Suma (+1) o quita (-1) un voto a una calabaza.
+  function cambiar(id, paso) {
+    const n = estado.seleccion.get(id) || 0;
+    if (paso > 0 && totalVotos(estado.seleccion) >= estado.maxVotos) {
+      avisar('Ya has repartido los ' + estado.maxVotos + ' votos. Quita alguno para dárselo a otra calabaza.', true);
       return;
-    } else {
-      estado.seleccion.add(id);
-      if (estado.seleccion.size === estado.maxVotos) avisar('🍬 ¡Cubo lleno! Ya tienes ' + estado.maxVotos + ' calabazas.');
     }
-    local.set('borrador-' + normalizarNombre(estado.codigo), JSON.stringify([...estado.seleccion]));
+    if (n + paso <= 0) estado.seleccion.delete(id);
+    else estado.seleccion.set(id, n + paso);
+    if (paso > 0 && totalVotos(estado.seleccion) === estado.maxVotos) avisar('🍬 ¡Cubo lleno! Has repartido los ' + estado.maxVotos + ' votos.');
+    local.set('borrador-' + normalizarNombre(estado.codigo), JSON.stringify(aLista(estado.seleccion)));
     actualizar();
   }
 
@@ -591,19 +624,17 @@
       return;
     }
     const anteriores = datos.seleccion.length ? datos.seleccion : enviado;
-    estado.enviada = new Set(anteriores);
+    estado.enviada = deLista(anteriores);
     let borrador = null;
     try { borrador = JSON.parse(local.get('borrador-' + clave) || 'null'); } catch (e) { borrador = null; }
-    estado.seleccion = new Set(borrador || anteriores);
+    estado.seleccion = deLista(borrador || anteriores);
     local.set('codigo', estado.codigo);
 
     $('saludo').textContent = 'Hola, ' + (estado.nombre.split(' ')[0] || 'docente') + ' 👋';
     pintarLista();
     mostrar('votar');
     if (!silencioso && anteriores.length) {
-      avisar(anteriores.length === 1
-        ? 'Ya votaste 1 calabaza. Puedes cambiarla.'
-        : 'Ya votaste ' + anteriores.length + ' calabazas. Puedes cambiarlas.');
+      avisar('Ya repartiste ' + plural(anteriores.length, 'voto', 'votos') + '. Puedes cambiarlos.');
     }
   }
 
@@ -632,10 +663,11 @@
   }
 
   function pedirConfirmacion() {
-    const total = estado.seleccion.size;
+    const total = totalVotos(estado.seleccion);
     const faltan = estado.maxVotos - total;
-    $('confirmar-texto').textContent = 'Has elegido ' + total + (total === 1 ? ' calabaza' : ' calabazas') +
-      (faltan > 0 ? '. Aún podrías elegir ' + faltan + ' más.' : '.');
+    $('confirmar-texto').textContent = 'Has repartido ' + plural(total, 'voto', 'votos') + ' entre ' +
+      plural(estado.seleccion.size, 'calabaza', 'calabazas') +
+      (faltan > 0 ? '. Aún te ' + (faltan === 1 ? 'queda 1 voto' : 'quedan ' + faltan + ' votos') + ' por repartir.' : '.');
     $('confirmar').showModal();
   }
 
@@ -644,13 +676,13 @@
     const boton = $('btn-enviar');
     ocupado(boton, 'Enviando…');
     try {
-      const ids = [...estado.seleccion];
+      const ids = aLista(estado.seleccion);
       await llamar('POST', { accion: 'votar', codigo: estado.codigo, ids });
-      estado.enviada = new Set(ids);
+      estado.enviada = deLista(ids);
       local.set('enviado-' + normalizarNombre(estado.codigo), JSON.stringify(ids));
       local.del('borrador-' + normalizarNombre(estado.codigo));
-      $('gracias-texto').textContent = 'Has votado ' + ids.length + ' de ' + estado.maxVotos +
-        ' calabazas posibles. Puedes cambiar tus votos mientras la votación esté abierta.';
+      $('gracias-texto').textContent = 'Has repartido ' + ids.length + ' de ' + estado.maxVotos + ' votos entre ' +
+        plural(estado.seleccion.size, 'calabaza', 'calabazas') + '. Puedes cambiarlos mientras la votación esté abierta.';
       mostrar('gracias');
       lluviaDeCaramelos();
     } catch (e) {
@@ -767,10 +799,10 @@
     ocupado(boton, 'Enviando 0 de 20…');
     try {
       for (let i = 1; i <= 20; i++) {
-        const ids = new Set();
-        const cuantas = 1 + Math.floor(Math.random() * estado.maxVotos);
-        while (ids.size < cuantas) ids.add(String(aleatoria()));
-        await llamar('POST', { accion: 'votar', codigo: 'Simulación ' + i, ids: [...ids] });
+        // Cada «profesor» reparte entre 1 y 26 votos; puede repetir calabaza.
+        const cuantos = 1 + Math.floor(Math.random() * estado.maxVotos);
+        const ids = Array.from({ length: cuantos }, () => String(aleatoria()));
+        await llamar('POST', { accion: 'votar', codigo: 'Simulación ' + i, ids });
         enviados++;
         boton.textContent = 'Enviando ' + enviados + ' de 20…';
       }
