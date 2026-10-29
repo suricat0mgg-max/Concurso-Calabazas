@@ -86,6 +86,7 @@
       <div class="tarjeta">
         <h2>Resultados 🏆</h2>
         <button id="btn-borrar" class="boton secundario" type="button">🗑️ Borrar todos los votos</button>
+        <button id="btn-simular" class="boton secundario" type="button">🧪 Simular 20 profesores</button>
         <p id="resumen" class="resumen"></p>
         <p id="votantes" class="votantes"></p>
         <button id="btn-actualizar" class="boton secundario" type="button">Actualizar</button>
@@ -116,6 +117,15 @@
     <div class="botones">
       <button id="confirmar-no" class="boton secundario" type="button">Revisar</button>
       <button id="confirmar-si" class="boton baba" type="button">¡Sí, enviar!</button>
+    </div>
+  </dialog>
+
+  <dialog id="simular" class="visor">
+    <h2>¿Simular 20 profesores?</h2>
+    <p>Se enviarán 20 votos de prueba (de «Simulación 1» a «Simulación 20») como si fueran profesores de verdad. Cuando acabes de mirar, pulsa «Borrar todos los votos».</p>
+    <div class="botones">
+      <button id="simular-no" class="boton secundario" type="button">Cancelar</button>
+      <button id="simular-si" class="boton" type="button">Sí, simular</button>
     </div>
   </dialog>
 

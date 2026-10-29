@@ -723,6 +723,37 @@
   }
 
   // Borra todos los votos (solo desde la pantalla de resultados del administrador).
+  // Envía 20 votos de prueba como si fueran profesores, para ver el ranking lleno.
+  // Unas cuantas calabazas salen más a menudo, para que haya un podio claro.
+  async function simularVotos() {
+    $('simular').close();
+    const boton = $('btn-simular');
+    const total = estado.calabazas.length || 250;
+    const favoritas = [7, 42, 99, 150, total];
+    const aleatoria = () => (Math.random() < 0.35
+      ? favoritas[Math.floor(Math.random() * favoritas.length)]
+      : 1 + Math.floor(Math.random() * total));
+    let enviados = 0;
+    ocupado(boton, 'Enviando 0 de 20…');
+    try {
+      for (let i = 1; i <= 20; i++) {
+        const ids = new Set();
+        const cuantas = 1 + Math.floor(Math.random() * estado.maxVotos);
+        while (ids.size < cuantas) ids.add(String(aleatoria()));
+        await llamar('POST', { accion: 'votar', codigo: 'Simulación ' + i, ids: [...ids] });
+        enviados++;
+        boton.textContent = 'Enviando ' + enviados + ' de 20…';
+      }
+      avisar('20 votos de prueba enviados. Cargando el ranking…');
+      await espera(2500);
+      await cargarResultados(estado.claveAdmin);
+    } catch (e) {
+      avisar('Se enviaron ' + enviados + ' de 20: ' + e.message, true);
+    } finally {
+      ocupado(boton, null);
+    }
+  }
+
   async function borrarVotos() {
     $('borrar').close();
     const boton = $('btn-borrar');
@@ -777,6 +808,9 @@
     });
     al('borrar-si', 'click', borrarVotos);
     al('borrar-no', 'click', () => $('borrar').close());
+    al('btn-simular', 'click', () => $('simular').showModal());
+    al('simular-si', 'click', simularVotos);
+    al('simular-no', 'click', () => $('simular').close());
     al('btn-enviar', 'click', pedirConfirmacion);
     al('confirmar-si', 'click', enviar);
     al('confirmar-no', 'click', () => $('confirmar').close());

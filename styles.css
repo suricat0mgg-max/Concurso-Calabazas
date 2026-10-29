@@ -16,6 +16,12 @@
   --luna: #fff3c4;
   --error: #ff6b8a;
   --tinta: #2b1350;
+  --oro-1: #ffe27a;
+  --oro-2: #f5b301;
+  --plata-1: #f2f2f7;
+  --plata-2: #b9bcc9;
+  --bronce-1: #f3b37a;
+  --bronce-2: #c46f2c;
   --radio: 22px;
   --fuente-titulo: "Chewy", "Comic Sans MS", "Trebuchet MS", cursive;
   --fuente: "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -358,6 +364,18 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--baba); outl
 .ranking li.oro::before { content: "🥇"; }
 .ranking li.plata::before { content: "🥈"; }
 .ranking li.bronce::before { content: "🥉"; }
+/* Podio: fondo de oro, plata y bronce con texto oscuro. */
+.ranking li.oro, .ranking li.plata, .ranking li.bronce {
+  margin-bottom: 8px;
+  border: 0;
+  border-radius: 14px;
+  color: var(--tinta);
+  box-shadow: 0 4px 0 var(--tinta);
+}
+.ranking li.oro { background: linear-gradient(135deg, var(--oro-1), var(--oro-2)); }
+.ranking li.plata { background: linear-gradient(135deg, var(--plata-1), var(--plata-2)); }
+.ranking li.bronce { background: linear-gradient(135deg, var(--bronce-1), var(--bronce-2)); }
+.ranking li.oro .mini, .ranking li.plata .mini, .ranking li.bronce .mini { background: rgba(255, 255, 255, .45); }
 .ranking img, .ranking .mini { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; background: var(--cielo-1); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; }
 .ranking .votos { font-weight: 900; font-size: 1.2rem; font-variant-numeric: tabular-nums; }
 .ranking .titulo { overflow-wrap: anywhere; font-weight: 800; }
