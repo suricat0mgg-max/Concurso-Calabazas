@@ -345,9 +345,8 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--baba); outl
 
 .resumen { color: var(--suave); text-align: center; font-weight: 700; }
 .votantes { color: var(--suave); font-size: .9rem; overflow-wrap: anywhere; }
-.ranking { padding-left: 0; list-style: none; counter-reset: puesto; }
+.ranking { padding-left: 0; list-style: none; }
 .ranking li {
-  counter-increment: puesto;
   display: grid;
   grid-template-columns: 2.4em 56px minmax(0, 1fr) auto;
   align-items: center;
@@ -355,10 +354,10 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--baba); outl
   padding: 10px;
   border-bottom: 2px dashed var(--borde);
 }
-.ranking li::before { content: counter(puesto) "º"; font-family: var(--fuente-titulo); font-size: 1.3rem; color: var(--naranja-claro); }
-.ranking li:nth-child(1)::before { content: "🥇"; }
-.ranking li:nth-child(2)::before { content: "🥈"; }
-.ranking li:nth-child(3)::before { content: "🥉"; }
+.ranking li::before { content: attr(data-puesto); font-family: var(--fuente-titulo); font-size: 1.3rem; color: var(--naranja-claro); }
+.ranking li.oro::before { content: "🥇"; }
+.ranking li.plata::before { content: "🥈"; }
+.ranking li.bronce::before { content: "🥉"; }
 .ranking img, .ranking .mini { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; background: var(--cielo-1); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; }
 .ranking .votos { font-weight: 900; font-size: 1.2rem; font-variant-numeric: tabular-nums; }
 .ranking .titulo { overflow-wrap: anywhere; font-weight: 800; }

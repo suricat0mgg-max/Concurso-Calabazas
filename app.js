@@ -73,7 +73,7 @@
 
   // Modo demostración: datos de ejemplo guardados en este navegador.
   function demo(datos) {
-    const calabazas = Array.from({ length: 200 }, (_, i) => ({ id: String(i + 1), foto: '' }));
+    const calabazas = Array.from({ length: 250 }, (_, i) => ({ id: String(i + 1), foto: '' }));
     const votos = JSON.parse(local.get('demo-votos') || '{}');
     switch (datos.accion) {
       case 'calabazas':
@@ -324,7 +324,7 @@
 
   async function formulario(datos) {
     const maxVotos = CONFIG.MAX_VOTOS || 26;
-    const calabazas = Array.from({ length: CONFIG.CALABAZAS || 200 }, (_, i) => ({ id: String(i + 1), foto: '' }));
+    const calabazas = Array.from({ length: CONFIG.CALABAZAS || 250 }, (_, i) => ({ id: String(i + 1), foto: '' }));
     const texto = String(datos.codigo || datos.clave || '').trim();
     const esAdmin = async () => !!texto && (await huella('admin:' + texto.toUpperCase())) === CONFIG.ADMIN;
 
@@ -375,7 +375,7 @@
 
   async function almacen(datos) {
     const maxVotos = CONFIG.MAX_VOTOS || 26;
-    const calabazas = Array.from({ length: CONFIG.CALABAZAS || 200 }, (_, i) => ({ id: String(i + 1), foto: '' }));
+    const calabazas = Array.from({ length: CONFIG.CALABAZAS || 250 }, (_, i) => ({ id: String(i + 1), foto: '' }));
     const texto = String(datos.codigo || datos.clave || '').trim();
     const esAdmin = async () => !!texto && (await huella('admin:' + texto.toUpperCase())) === CONFIG.ADMIN;
     const claveVoto = () => huella('voto:' + comprobarNombre(texto));
@@ -642,8 +642,13 @@
     $('votantes').textContent = votantes.length ? 'Quién ha votado: ' + votantes.join(', ') + '.' : '';
     const ranking = $('ranking');
     ranking.innerHTML = '';
-    datos.ranking.forEach((c) => {
+    // Los empates comparten puesto: 4, 4, 4, 3 votos → 1º, 1º, 1º, 4º.
+    let puesto = 0;
+    datos.ranking.forEach((c, i) => {
+      if (i === 0 || c.votos !== datos.ranking[i - 1].votos) puesto = i + 1;
       const li = document.createElement('li');
+      li.dataset.puesto = puesto + 'º';
+      if (c.votos > 0 && puesto <= 3) li.className = ['oro', 'plata', 'bronce'][puesto - 1];
       let mini;
       if (c.foto) {
         mini = document.createElement('img');
