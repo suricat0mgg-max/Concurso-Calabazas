@@ -7,7 +7,7 @@ window.CONFIG = {
   CAMPO_NOMBRE: 'entry.1197551579',
   CAMPO_VOTOS: 'entry.725055496',
   RESULTADOS_CSV: 'https://docs.google.com/spreadsheets/d/19_YVg1kQOTH4M4eqT-LyuvBnTA4XLhr7MsP_ojREKaQ/edit?usp=drivesdk',
-  CALABAZAS: 200,
+  CALABAZAS: 250,
   MAX_VOTOS: 26,
   ADMIN: "35fd779a541e47801ad6629e7cb343e00de992da070e97b4cd4f5309dda0a0d1",
 };
