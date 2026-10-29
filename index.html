@@ -66,6 +66,21 @@
     </section>
 
     <!-- Resultados: solo al entrar con el código de administración -->
+    <!-- Preparación del almacén de votos (abrir con #preparar) -->
+    <section id="pantalla-preparar" class="pantalla" hidden>
+      <div class="tarjeta">
+        <h2>Preparar la votación 🔧</h2>
+        <p>Esto crea el almacén donde se guardarán los votos y comprueba que funciona. Solo hay que hacerlo una vez.</p>
+        <button id="btn-preparar" class="boton" type="button">Crear almacén</button>
+        <p id="preparar-estado" class="aviso"></p>
+        <div id="preparar-ok" hidden>
+          <label for="preparar-texto">Copia este texto y envíaselo a Claude:</label>
+          <input id="preparar-texto" readonly>
+          <button id="btn-copiar" class="boton baba" type="button">Copiar</button>
+        </div>
+      </div>
+    </section>
+
     <section id="pantalla-resultados" class="pantalla" hidden>
       <div class="tarjeta">
         <h2>Resultados 🏆</h2>
