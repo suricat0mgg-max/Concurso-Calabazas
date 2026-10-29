@@ -129,6 +129,7 @@
       throw new Error('Sin conexión. Inténtalo de nuevo.');
     }
     const texto = await r.text();
+    if (r.status === 429) throw new Error('El servicio de votos ha llegado a su límite de hoy. Prueba con datos móviles en vez de wifi, o avisa a quien organiza.');
     if (!r.ok) throw new Error('El servidor respondió ' + r.status + (texto ? ': ' + texto.slice(0, 100) : ''));
     return { r, texto };
   }
@@ -150,7 +151,10 @@
     const escribir = (doc) => http(base, { method: 'PUT', headers: JSON_CABECERAS, body: envolver(doc) });
 
     // Si otro docente guarda justo a la vez, puede escribir el documento sin este
-    // voto. Por eso se comprueba al momento y otra vez pasados unos segundos.
+    // voto. Por eso se comprueba al momento y otra vez pasados unos segundos,
+    // salvo en restful-api.dev, que solo permite unas 50 peticiones al día: ahí
+    // se hace una sola comprobación para gastar 3 peticiones por voto.
+    const comprobarDosVeces = tipo !== 'restful';
     async function guardarVoto(clave, voto) {
       const sigue = async () => {
         const v = (await leer()).votos[clave];
@@ -170,6 +174,7 @@
           await escribir(doc);
         }
         if (await sigue()) {
+          if (!comprobarDosVeces) return;
           await espera(2500);
           if (await sigue()) return;
         }
