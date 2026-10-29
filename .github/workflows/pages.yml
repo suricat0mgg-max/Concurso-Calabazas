@@ -1,14 +1,14 @@
 name: Publicar en GitHub Pages
 
+# Copia la página a la rama gh-pages, que es la que publica GitHub Pages.
 on:
   push:
     branches: [ccr-bf81f92a-ybx04n]
+    paths: [index.html, styles.css, app.js, config.js]
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
@@ -17,16 +17,15 @@ concurrency:
 jobs:
   publicar:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.despliegue.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
-      - name: Preparar archivos de la página
-        run: mkdir _site && cp index.html styles.css app.js config.js _site/
-      - uses: actions/upload-pages-artifact@v3
-      - id: despliegue
-        uses: actions/deploy-pages@v4
+      - name: Actualizar la rama gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir /tmp/sitio && cp index.html styles.css app.js config.js /tmp/sitio/ && touch /tmp/sitio/.nojekyll
+          git fetch origin gh-pages
+          git checkout gh-pages
+          git rm -rq --ignore-unmatch . && cp -a /tmp/sitio/. .
+          git add -A
+          git diff --cached --quiet || (git commit -m "Publicar ${GITHUB_SHA::7}" && git push origin gh-pages)
