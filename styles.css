@@ -138,7 +138,7 @@ input:not([type="checkbox"]) {
   color: var(--texto);
 }
 input:focus-visible, button:focus-visible { outline: 3px solid var(--baba); outline-offset: 2px; }
-#codigo { text-transform: uppercase; letter-spacing: 3px; font-weight: 800; text-align: center; }
+#codigo { font-weight: 800; text-align: center; }
 
 .boton {
   display: block;
@@ -332,6 +332,7 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--baba); outl
 /* ---------- Resultados ---------- */
 
 .resumen { color: var(--suave); text-align: center; font-weight: 700; }
+.votantes { color: var(--suave); font-size: .9rem; overflow-wrap: anywhere; }
 .ranking { padding-left: 0; list-style: none; counter-reset: puesto; }
 .ranking li {
   counter-increment: puesto;

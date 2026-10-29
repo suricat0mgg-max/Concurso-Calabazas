@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chewy&family=Nunito:wght@600;700;800;900&display=swap">
-  <link rel="stylesheet" href="styles.css?v=5efec3e">
+  <link rel="stylesheet" href="styles.css?v=8b50077">
 </head>
 <body>
 <!--contenido-->
@@ -33,14 +33,14 @@
       <form id="form-entrar" class="tarjeta">
         <h2>¡Hora de votar!</h2>
         <ul class="instrucciones">
-          <li><span aria-hidden="true">🔑</span> Escribe tu código de docente.</li>
+          <li><span aria-hidden="true">✏️</span> Escribe tu nombre y apellido.</li>
           <li><span aria-hidden="true">🎃</span> Elige hasta <strong class="max-votos">27</strong> calabazas.</li>
           <li><span aria-hidden="true">🍬</span> Pulsa «Enviar votos». Puedes cambiarlos después.</li>
         </ul>
-        <label for="codigo">Código de docente</label>
-        <input id="codigo" name="codigo" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
+        <label for="codigo">Tu nombre y apellido</label>
+        <input id="codigo" name="codigo" autocomplete="name" autocapitalize="words" spellcheck="false" placeholder="Ej.: Ana García" required>
         <button type="submit" class="boton">Entrar</button>
-        <p id="demo-aviso" class="aviso" hidden>Versión de prueba: entra con el código <strong>DEMO</strong> para votar o <strong>ADMIN</strong> para ver los resultados. Los votos solo se guardan en tu móvil.</p>
+        <p id="demo-aviso" class="aviso" hidden>Versión de prueba: escribe tu nombre para votar, o <strong>ADMIN</strong> para ver los resultados. Los votos solo se guardan en tu móvil.</p>
       </form>
     </section>
 
@@ -70,6 +70,7 @@
       <div class="tarjeta">
         <h2>Resultados 🏆</h2>
         <p id="resumen" class="resumen"></p>
+        <p id="votantes" class="votantes"></p>
         <button id="btn-actualizar" class="boton secundario" type="button">Actualizar</button>
         <ol id="ranking" class="ranking"></ol>
         <button id="btn-salir-admin" class="boton enlace" type="button">Salir</button>
@@ -104,7 +105,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <!--/contenido-->
 
-  <script src="config.js?v=5efec3e"></script>
-  <script src="app.js?v=5efec3e"></script>
+  <script src="config.js?v=8b50077"></script>
+  <script src="app.js?v=8b50077"></script>
 </body>
 </html>

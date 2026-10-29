@@ -18,6 +18,29 @@
 
   const $ = (id) => document.getElementById(id);
 
+  // «  maría  López » y «Maria lopez» son la misma persona.
+  function normalizarNombre(texto) {
+    return String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  // Nombre tal como se mostrará: «maría lópez» → «María López».
+  function nombreBonito(texto) {
+    return String(texto || '').trim().replace(/\s+/g, ' ')
+      .split(' ').map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
+  }
+
+  function comprobarNombre(texto) {
+    const partes = normalizarNombre(texto).split(' ').filter((p) => p.length >= 2);
+    if (!partes.length) throw new Error('Escribe tu nombre');
+    if (partes.length < 2) throw new Error('Escribe también tu apellido, por si hay otro docente que se llame igual');
+    return normalizarNombre(texto);
+  }
+
+  function esCodigoAdminDemo(texto) {
+    return String(texto || '').trim().toUpperCase() === 'ADMIN';
+  }
+
   // ---------- Almacenamiento local (solo comodidad, puede fallar) ----------
 
   const local = {
@@ -54,34 +77,34 @@
     switch (datos.accion) {
       case 'calabazas':
         return { calabazas, maxVotos: 27, abierta: true };
-      case 'entrar':
-        if (String(datos.codigo).trim().toUpperCase() === 'ADMIN') return { admin: true };
-        if (String(datos.codigo).trim().toUpperCase() !== 'DEMO') throw new Error('Código no válido');
-        return { nombre: 'Docente de prueba', seleccion: votos.DEMO || [] };
+      case 'entrar': {
+        if (esCodigoAdminDemo(datos.codigo)) return { admin: true };
+        const guardado = votos[comprobarNombre(datos.codigo)];
+        return { nombre: nombreBonito(datos.codigo), seleccion: (guardado && guardado.ids) || [] };
+      }
       case 'votar':
         if (!datos.ids.length) throw new Error('Elige al menos una calabaza');
         if (datos.ids.length > 27) throw new Error('Puedes votar como máximo 27 calabazas');
-        votos.DEMO = datos.ids;
+        votos[comprobarNombre(datos.codigo)] = { nombre: nombreBonito(datos.codigo), ids: datos.ids };
         local.set('demo-votos', JSON.stringify(votos));
         return { ok: true, total: datos.ids.length };
       case 'resultados': {
-        if (String(datos.clave).trim().toUpperCase() !== 'ADMIN') throw new Error('Código no válido');
+        if (!esCodigoAdminDemo(datos.clave)) throw new Error('Código no válido');
+        const lista = Object.values(votos).filter((v) => v && Array.isArray(v.ids));
         const cuenta = {};
-        Object.values(votos).flat().forEach((id) => (cuenta[id] = (cuenta[id] || 0) + 1));
+        lista.forEach((v) => v.ids.forEach((id) => (cuenta[id] = (cuenta[id] || 0) + 1)));
         const ranking = calabazas.map((c) => Object.assign({}, c, { votos: cuenta[c.id] || 0 }))
           .sort((a, b) => b.votos - a.votos);
-        return { ranking, votantes: Object.keys(votos).length, docentes: 1 };
+        return { ranking, votantes: lista.map((v) => v.nombre) };
       }
     }
     throw new Error('Acción desconocida');
   }
 
-  // Almacén de claves público (kvdb.io). La página solo guarda huellas SHA-256:
-  // - el voto de cada docente va en la clave huella('voto:' + código), que solo
-  //   puede calcular quien conoce el código;
-  // - CONFIG.VALIDOS tiene huella('ok:' + esa clave), que sirve para saber qué
-  //   claves son de docentes válidos sin revelar cuáles son;
-  // - CONFIG.ADMIN es huella('admin:' + código de administración).
+  // Almacén de claves público (kvdb.io). El voto de cada docente va en la clave
+  // huella('voto:' + nombre normalizado), así que volver a votar con el mismo
+  // nombre sustituye el voto anterior. CONFIG.ADMIN es huella('admin:' + código
+  // de administración): el código no aparece en la página.
   async function huella(texto) {
     const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto));
     return Array.from(new Uint8Array(bytes), (b) => b.toString(16).padStart(2, '0')).join('');
@@ -100,17 +123,11 @@
   }
 
   async function almacen(datos) {
-    const validos = new Set(CONFIG.VALIDOS || []);
     const maxVotos = CONFIG.MAX_VOTOS || 27;
     const calabazas = Array.from({ length: CONFIG.CALABAZAS || 120 }, (_, i) => ({ id: String(i + 1), foto: '' }));
-    const codigo = String(datos.codigo || datos.clave || '').trim().toUpperCase();
-    const esAdmin = async () => !!codigo && (await huella('admin:' + codigo)) === CONFIG.ADMIN;
-    const claveVoto = async () => {
-      if (!codigo) throw new Error('Escribe tu código');
-      const clave = await huella('voto:' + codigo);
-      if (!validos.has(await huella('ok:' + clave))) throw new Error('Código no válido');
-      return clave;
-    };
+    const texto = String(datos.codigo || datos.clave || '').trim();
+    const esAdmin = async () => !!texto && (await huella('admin:' + texto.toUpperCase())) === CONFIG.ADMIN;
+    const claveVoto = () => huella('voto:' + comprobarNombre(texto));
 
     switch (datos.accion) {
       case 'calabazas':
@@ -118,7 +135,7 @@
       case 'entrar': {
         if (await esAdmin()) return { admin: true };
         const guardado = await pedir('/' + (await claveVoto()));
-        return { nombre: '', seleccion: guardado ? JSON.parse(guardado).ids || [] : [] };
+        return { nombre: nombreBonito(texto), seleccion: guardado ? JSON.parse(guardado).ids || [] : [] };
       }
       case 'votar': {
         if (CONFIG.ABIERTA === false) throw new Error('La votación está cerrada');
@@ -128,24 +145,25 @@
         if (!ids.length) throw new Error('Elige al menos una calabaza');
         if (ids.length > maxVotos) throw new Error('Puedes votar como máximo ' + maxVotos + ' calabazas');
         if (ids.some((id) => !existen.has(id))) throw new Error('Hay calabazas que no existen');
-        await pedir('/' + clave, { method: 'PUT', body: JSON.stringify({ ids, fecha: new Date().toISOString() }) });
+        const voto = { nombre: nombreBonito(texto), ids, fecha: new Date().toISOString() };
+        await pedir('/' + clave, { method: 'PUT', body: JSON.stringify(voto) });
         return { ok: true, total: ids.length };
       }
       case 'resultados': {
         if (!(await esAdmin())) throw new Error('Código no válido');
         const lista = JSON.parse((await pedir('/?values=true&format=json')) || '[]');
         const cuenta = {};
-        let votantes = 0;
-        for (const [clave, valor] of lista) {
-          if (!validos.has(await huella('ok:' + clave))) continue;
-          let ids = [];
-          try { ids = JSON.parse(valor).ids || []; } catch (e) { continue; }
-          votantes++;
-          [...new Set(ids.map(String))].slice(0, maxVotos).forEach((id) => (cuenta[id] = (cuenta[id] || 0) + 1));
+        const votantes = [];
+        for (const [, valor] of lista) {
+          let voto;
+          try { voto = JSON.parse(valor); } catch (e) { continue; }
+          if (!voto || !Array.isArray(voto.ids)) continue;
+          votantes.push(String(voto.nombre || '?'));
+          [...new Set(voto.ids.map(String))].slice(0, maxVotos).forEach((id) => (cuenta[id] = (cuenta[id] || 0) + 1));
         }
         const ranking = calabazas.map((c) => Object.assign({}, c, { votos: cuenta[c.id] || 0 }))
           .sort((a, b) => b.votos - a.votos);
-        return { ranking, votantes, docentes: validos.size };
+        return { ranking, votantes };
       }
     }
     throw new Error('Acción desconocida');
@@ -284,14 +302,14 @@
       await cargarResultados(codigo);
       return;
     }
-    estado.codigo = codigo.trim().toUpperCase();
+    estado.codigo = codigo.trim();
     estado.nombre = datos.nombre;
     estado.enviada = new Set(datos.seleccion);
     const borrador = JSON.parse(local.get('borrador-' + estado.codigo) || 'null');
     estado.seleccion = new Set(borrador || datos.seleccion);
     local.set('codigo', estado.codigo);
 
-    $('saludo').textContent = 'Hola, ' + (estado.nombre || 'docente') + ' 👋';
+    $('saludo').textContent = 'Hola, ' + (estado.nombre.split(' ')[0] || 'docente') + ' 👋';
     pintarLista();
     mostrar('votar');
     if (!silencioso && datos.seleccion.length) {
@@ -357,8 +375,10 @@
     const datos = await llamar('POST', { accion: 'resultados', clave });
     estado.claveAdmin = clave;
     $('saludo').textContent = 'Modo organización 🏆';
-    $('resumen').textContent = datos.votantes + ' de ' + datos.docentes + ' docentes han votado.' +
+    const votantes = datos.votantes.slice().sort((a, b) => a.localeCompare(b, 'es'));
+    $('resumen').textContent = (votantes.length === 1 ? 'Ha votado 1 docente.' : 'Han votado ' + votantes.length + ' docentes.') +
       (DEMO ? ' (Versión de prueba: solo cuenta los votos de este móvil.)' : '');
+    $('votantes').textContent = votantes.length ? 'Quién ha votado: ' + votantes.join(', ') + '.' : '';
     const ranking = $('ranking');
     ranking.innerHTML = '';
     datos.ranking.forEach((c) => {
