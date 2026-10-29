@@ -427,8 +427,14 @@
     $('preparar-ok').hidden = true;
     let etapa = 'crear el almacén';
     try {
+      const email = $('preparar-email').value.trim();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('escribe un correo válido');
       paso('Creando el almacén…');
-      let r = await fetch('https://kvdb.io/', { method: 'POST' });
+      let r = await fetch('https://kvdb.io/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'email=' + encodeURIComponent(email),
+      });
       const id = (await r.text()).trim();
       if (!r.ok || !/^[A-Za-z0-9]+$/.test(id)) throw new Error('respuesta ' + r.status + ': ' + id.slice(0, 120));
       const base = 'https://kvdb.io/' + id;
