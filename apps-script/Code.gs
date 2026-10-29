@@ -8,16 +8,32 @@
  *
  * Cada docente tiene un código personal. Puede elegir hasta MAX_VOTOS
  * calabazas distintas y cambiar su selección mientras la votación esté abierta.
+ * Solo pueden votar los códigos de la hoja Docentes (genéralos con generarCodigos).
+ *
+ * Resultados: menú «🎃 Concurso → Ver resultados» en la hoja de cálculo
+ * (solo quien tenga acceso a la hoja), o en la página con CLAVE_ADMIN.
  */
 
 const MAX_VOTOS = 27;
 const VOTACION_ABIERTA = true;
-// Cambia esta clave: se usa para ver los resultados en la página.
-const CLAVE_ADMIN = 'cambia-esta-clave';
+// Cambia esta clave y no la compartas: permite ver los resultados en la página.
+// Si la dejas vacía, los resultados solo se ven desde la hoja de cálculo.
+const CLAVE_ADMIN = '';
+// Número de docentes que pueden votar (lo usa generarCodigos).
+const CANTIDAD_DOCENTES = 30;
 
 const HOJA_CALABAZAS = 'Calabazas';
 const HOJA_DOCENTES = 'Docentes';
 const HOJA_VOTOS = 'Votos';
+const HOJA_RESULTADOS = 'Resultados';
+
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('🎃 Concurso')
+    .addItem('Ver resultados', 'verResultados')
+    .addItem('Generar códigos de docentes', 'generarCodigos')
+    .addToUi();
+}
 
 function doGet(e) {
   return responder_(() => {
@@ -84,7 +100,11 @@ function votar_(codigo, ids) {
 }
 
 function resultados_(clave) {
-  if (clave !== CLAVE_ADMIN) throw new Error('Clave incorrecta');
+  if (!CLAVE_ADMIN || clave !== CLAVE_ADMIN) throw new Error('Clave incorrecta');
+  return contar_();
+}
+
+function contar_() {
   const calabazas = leerCalabazas_();
   const cuenta = {};
   calabazas.forEach((c) => (cuenta[c.id] = 0));
@@ -100,6 +120,42 @@ function resultados_(clave) {
     .map((c) => Object.assign({}, c, { votos: cuenta[c.id] }))
     .sort((a, b) => b.votos - a.votos);
   return { ranking, votantes: filas.length, docentes: filas_(HOJA_DOCENTES).length };
+}
+
+/** Escribe el ranking en la hoja Resultados (solo visible para quien tiene la hoja). */
+function verResultados() {
+  const datos = contar_();
+  const libro = SpreadsheetApp.getActive();
+  const hoja = libro.getSheetByName(HOJA_RESULTADOS) || libro.insertSheet(HOJA_RESULTADOS);
+  hoja.clear();
+  const filas = [['puesto', 'id', 'nombre', 'autor', 'votos']].concat(
+    datos.ranking.map((c, i) => [i + 1, c.id, c.nombre, c.autor, c.votos])
+  );
+  hoja.getRange(1, 1, filas.length, 5).setValues(filas);
+  hoja.getRange(1, 1, 1, 5).setFontWeight('bold');
+  hoja.setFrozenRows(1);
+  hoja.getRange(1, 7).setValue('Han votado ' + datos.votantes + ' de ' + datos.docentes + ' docentes · ' + new Date().toLocaleString('es-ES'));
+  libro.setActiveSheet(hoja);
+}
+
+/**
+ * Rellena la hoja Docentes hasta tener CANTIDAD_DOCENTES códigos únicos.
+ * No borra los que ya existen. Escribe el nombre de cada docente al lado de su código.
+ */
+function generarCodigos() {
+  const hoja = hoja_(HOJA_DOCENTES);
+  const existentes = new Set(filas_(HOJA_DOCENTES).map((f) => normalizar_(f[0])).filter(Boolean));
+  const letras = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const nuevos = [];
+  while (existentes.size < CANTIDAD_DOCENTES) {
+    let codigo = '';
+    for (let i = 0; i < 6; i++) codigo += letras[Math.floor(Math.random() * letras.length)];
+    if (!existentes.has(codigo)) {
+      existentes.add(codigo);
+      nuevos.push([codigo, '']);
+    }
+  }
+  if (nuevos.length) hoja.getRange(hoja.getLastRow() + 1, 1, nuevos.length, 2).setValues(nuevos);
 }
 
 // ---------- Utilidades ----------
@@ -181,10 +237,7 @@ function configurar() {
       ['1', 'Calabaza vampira', '3º A', ''],
       ['2', 'La bruja sonriente', '4º B', ''],
     ],
-    [HOJA_DOCENTES]: [
-      ['codigo', 'nombre'],
-      ['PROFE01', 'Docente de ejemplo'],
-    ],
+    [HOJA_DOCENTES]: [['codigo', 'nombre']],
     [HOJA_VOTOS]: [['codigo', 'nombre', 'fecha', 'calabazas']],
   };
   Object.keys(plantillas).forEach((nombre) => {
@@ -195,4 +248,5 @@ function configurar() {
     hoja.getRange(1, 1, 1, datos[0].length).setFontWeight('bold');
     hoja.setFrozenRows(1);
   });
+  generarCodigos();
 }

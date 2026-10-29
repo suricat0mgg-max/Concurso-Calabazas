@@ -46,10 +46,13 @@
 
   // Modo demostración: datos de ejemplo guardados en este navegador.
   function demo(datos) {
-    const calabazas = Array.from({ length: 40 }, (_, i) => ({
+    const nombres = ['Calabaza vampira', 'La bruja sonriente', 'Jack el farolero', 'Gato negro', 'Fantasma feliz',
+      'Momia dormilona', 'Monstruo de caramelo', 'Araña bailarina', 'Calabaza pirata', 'Murciélago Bigotes', 'Zombi simpático'];
+    const clases = ['Infantil 3 años', 'Infantil 4 años', 'Infantil 5 años', '1º', '2º', '3º', '4º', '5º', '6º'];
+    const calabazas = Array.from({ length: 120 }, (_, i) => ({
       id: String(i + 1),
-      nombre: ['Calabaza vampira', 'La bruja sonriente', 'Jack el farolero', 'Gato negro', 'Fantasma feliz'][i % 5],
-      autor: (i % 6 + 1) + 'º ' + 'ABC'[i % 3],
+      nombre: nombres[i % nombres.length],
+      autor: clases[i % clases.length] + ' ' + 'AB'[i % 2],
       foto: '',
     }));
     const votos = JSON.parse(local.get('demo-votos') || '{}');
@@ -132,7 +135,11 @@
 
       const numero = document.createElement('span');
       numero.className = 'numero';
-      numero.textContent = '#' + c.id;
+      numero.textContent = 'Nº ' + c.id;
+      const sello = document.createElement('span');
+      sello.className = 'sello';
+      sello.setAttribute('aria-hidden', 'true');
+      sello.textContent = '⭐';
 
       const info = document.createElement('div');
       info.className = 'info';
@@ -149,7 +156,7 @@
       votar.className = 'votar';
       votar.addEventListener('click', () => alternar(c.id));
 
-      li.append(foto, numero, info, votar);
+      li.append(foto, numero, sello, info, votar);
       lista.appendChild(li);
     });
     actualizar();
@@ -169,7 +176,7 @@
       li.classList.toggle('elegida', elegida);
       li.classList.toggle('bloqueada', lleno && !elegida);
       boton.disabled = lleno && !elegida;
-      boton.textContent = elegida ? '✓ Elegida' : (lleno ? 'Límite alcanzado' : 'Votar');
+      boton.textContent = elegida ? '⭐ ¡Elegida!' : (lleno ? 'Ya tienes ' + estado.maxVotos : '🎃 Votar');
       boton.setAttribute('aria-pressed', elegida);
 
       const texto = (c.id + ' ' + c.nombre + ' ' + c.autor).toLowerCase();
@@ -180,7 +187,8 @@
 
     $('sin-resultados').hidden = visibles > 0;
     $('contador').textContent = total;
-    $('contador').parentElement.classList.toggle('lleno', lleno);
+    $('contador-caja').classList.toggle('lleno', lleno);
+    $('progreso').style.width = Math.min(100, total / estado.maxVotos * 100) + '%';
     const sinCambios = total === estado.enviada.size && [...estado.seleccion].every((id) => estado.enviada.has(id));
     $('btn-enviar').disabled = total === 0 || sinCambios || !estado.abierta;
     $('btn-enviar').textContent = estado.enviada.size ? 'Actualizar votos' : 'Enviar votos';
@@ -190,11 +198,11 @@
     if (estado.seleccion.has(id)) {
       estado.seleccion.delete(id);
     } else if (estado.seleccion.size >= estado.maxVotos) {
-      avisar('Ya elegiste ' + estado.maxVotos + ' calabazas. Quita alguna para elegir otra.', true);
+      avisar('¡Ya tienes ' + estado.maxVotos + '! Quita una para elegir otra.', true);
       return;
     } else {
       estado.seleccion.add(id);
-      if (estado.seleccion.size === estado.maxVotos) avisar('¡Has llegado al máximo de ' + estado.maxVotos + '!');
+      if (estado.seleccion.size === estado.maxVotos) avisar('🍬 ¡Cubo lleno! Ya tienes ' + estado.maxVotos + ' calabazas.');
     }
     local.set('borrador-' + estado.codigo, JSON.stringify([...estado.seleccion]));
     actualizar();
@@ -203,7 +211,7 @@
   function abrirVisor(c) {
     $('visor-img').src = c.foto;
     $('visor-img').alt = c.nombre;
-    $('visor-texto').textContent = '#' + c.id + ' · ' + (c.nombre || '') + (c.autor ? ' — ' + c.autor : '');
+    $('visor-texto').textContent = 'Nº ' + c.id + ' · ' + (c.nombre || '') + (c.autor ? ' — ' + c.autor : '');
     $('visor').showModal();
   }
 
@@ -234,8 +242,30 @@
     mostrar('entrar');
   }
 
+  function lluviaDeCaramelos() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const dulces = ['🍬', '🍭', '🎃', '🍫', '👻', '⭐'];
+    for (let i = 0; i < 28; i++) {
+      const d = document.createElement('span');
+      d.className = 'caramelo';
+      d.textContent = dulces[i % dulces.length];
+      d.style.left = Math.random() * 95 + 'vw';
+      d.style.animationDelay = Math.random() * 0.8 + 's';
+      document.body.appendChild(d);
+      setTimeout(() => d.remove(), 3200);
+    }
+  }
+
+  function pedirConfirmacion() {
+    const total = estado.seleccion.size;
+    const faltan = estado.maxVotos - total;
+    $('confirmar-texto').textContent = 'Has elegido ' + total + (total === 1 ? ' calabaza' : ' calabazas') +
+      (faltan > 0 ? '. Aún podrías elegir ' + faltan + ' más.' : '.');
+    $('confirmar').showModal();
+  }
+
   async function enviar() {
-    if (!confirm('¿Enviar ' + estado.seleccion.size + ' votos?')) return;
+    $('confirmar').close();
     const boton = $('btn-enviar');
     ocupado(boton, 'Enviando…');
     try {
@@ -246,6 +276,7 @@
       $('gracias-texto').textContent = 'Has votado ' + ids.length + ' de ' + estado.maxVotos +
         ' calabazas posibles. Puedes cambiar tus votos mientras la votación esté abierta.';
       mostrar('gracias');
+      lluviaDeCaramelos();
     } catch (e) {
       avisar(e.message, true);
     } finally {
@@ -260,7 +291,8 @@
     ocupado(boton, 'Cargando…');
     try {
       const datos = await llamar('POST', { accion: 'resultados', clave: $('clave').value });
-      $('resumen').textContent = datos.votantes + ' de ' + datos.docentes + ' docentes han votado.';
+      $('resumen').textContent = datos.votantes + ' de ' + datos.docentes + ' docentes han votado.' +
+        (DEMO ? ' (Versión de prueba: solo cuenta los votos de este móvil.)' : '');
       const ranking = $('ranking');
       ranking.innerHTML = '';
       datos.ranking.forEach((c) => {
@@ -278,7 +310,7 @@
         }
         const titulo = document.createElement('span');
         titulo.className = 'titulo';
-        titulo.textContent = '#' + c.id + ' ' + (c.nombre || '');
+        titulo.textContent = 'Nº ' + c.id + ' ' + (c.nombre || '');
         const autor = document.createElement('small');
         autor.textContent = c.autor;
         titulo.appendChild(autor);
@@ -313,7 +345,9 @@
         ocupado(boton, null);
       }
     });
-    $('btn-enviar').addEventListener('click', enviar);
+    $('btn-enviar').addEventListener('click', pedirConfirmacion);
+    $('confirmar-si').addEventListener('click', enviar);
+    $('confirmar-no').addEventListener('click', () => $('confirmar').close());
     $('btn-cambiar').addEventListener('click', () => { mostrar('votar'); actualizar(); });
     $('btn-salir').addEventListener('click', salir);
     $('buscar').addEventListener('input', actualizar);

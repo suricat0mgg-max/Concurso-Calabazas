@@ -20,15 +20,21 @@ Abre `index.html` en el navegador. Si `config.js` no tiene URL, funciona en modo
 
 1. Crea una hoja de cálculo nueva en Google Sheets.
 2. Menú **Extensiones → Apps Script**. Borra el contenido y pega `apps-script/Code.gs`.
-3. Cambia `CLAVE_ADMIN` al principio del archivo (y `MAX_VOTOS` si algún día cambia el límite).
+3. Al principio del archivo ajusta:
+   - `CANTIDAD_DOCENTES`: cuántas personas pueden votar.
+   - `MAX_VOTOS`: cuántas calabazas puede elegir cada una (27).
+   - `CLAVE_ADMIN`: déjala vacía para que los resultados **solo** se vean desde la hoja de cálculo,
+     o pon una clave secreta para verlos también en la página (`#resultados`).
 4. Selecciona la función `configurar` y pulsa **Ejecutar** (acepta los permisos).
-   Se crean las hojas `Calabazas`, `Docentes` y `Votos`.
+   Se crean las hojas `Calabazas`, `Docentes` y `Votos`, y se generan los códigos de los docentes.
 5. Rellena las hojas:
    - **Calabazas:** `id` (número que se ve en la tarjeta), `nombre`, `autor` (p. ej. el grupo) y `foto`.
      En `foto` puedes poner cualquier URL de imagen o un enlace de Google Drive
      (el archivo debe estar compartido como "Cualquier persona con el enlace").
-   - **Docentes:** un `codigo` único por docente y su `nombre`. Reparte a cada docente su código.
-     Así cada persona vota solo una vez.
+   - **Docentes:** ya tiene un código por docente. Escribe al lado el `nombre` de cada uno y
+     reparte los códigos. Solo esos códigos pueden votar, y cada uno vota una sola vez
+     (si vuelve a enviar, se reemplaza su voto anterior).
+     Si necesitas más, sube `CANTIDAD_DOCENTES` y usa el menú **🎃 Concurso → Generar códigos de docentes**.
 6. **Implementar → Nueva implementación → Aplicación web**:
    - Ejecutar como: *Yo*
    - Quién tiene acceso: *Cualquier usuario*
@@ -46,8 +52,9 @@ Abre `index.html` en el navegador. Si `config.js` no tiene URL, funciona en modo
 
 ## Durante y después del concurso
 
-- **Ver resultados:** abre `https://tu-pagina/#resultados` e introduce `CLAVE_ADMIN`.
-  Muestra el ranking y cuántos docentes han votado.
+- **Ver resultados:** en la hoja de cálculo, menú **🎃 Concurso → Ver resultados**. Crea la hoja
+  `Resultados` con el ranking y cuántos docentes han votado. Solo lo ve quien tenga acceso a la hoja
+  (no la compartas). Si pusiste `CLAVE_ADMIN`, también en `https://tu-pagina/#resultados`.
 - **Cerrar la votación:** pon `VOTACION_ABIERTA = false` en `Code.gs` y publica una nueva versión.
 - Los votos quedan en la hoja `Votos` (una fila por docente con las calabazas elegidas),
   así que también se pueden revisar o exportar desde Google Sheets.
