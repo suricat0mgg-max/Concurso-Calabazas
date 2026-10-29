@@ -553,6 +553,24 @@
 
   // ---------- Flujo ----------
 
+  // Pregunta si quien escribe un nombre que ya votó desde otro móvil es la misma
+  // persona, para que dos docentes con el mismo nombre no se borren el voto.
+  function preguntarSiEsElMismo(nombre) {
+    return new Promise((resolver) => {
+      const dialogo = $('duplicado');
+      $('duplicado-titulo').textContent = '«' + nombre + '» ya ha votado';
+      const responder = (si) => {
+        $('duplicado-si').onclick = $('duplicado-no').onclick = dialogo.oncancel = null;
+        dialogo.close();
+        resolver(si);
+      };
+      $('duplicado-si').onclick = () => responder(true);
+      $('duplicado-no').onclick = () => responder(false);
+      dialogo.oncancel = (e) => { e.preventDefault(); responder(false); };
+      dialogo.showModal();
+    });
+  }
+
   async function entrar(codigo, silencioso) {
     const datos = await llamar('POST', { accion: 'entrar', codigo });
     if (datos.admin) {
@@ -566,6 +584,12 @@
     const clave = normalizarNombre(estado.codigo);
     let enviado = [];
     try { enviado = JSON.parse(local.get('enviado-' + clave) || '[]'); } catch (e) { enviado = []; }
+    if (!silencioso && datos.seleccion.length && !enviado.length && !(await preguntarSiEsElMismo(datos.nombre))) {
+      estado.codigo = null;
+      avisar('Añade la inicial de tu apellido para diferenciarte, por ejemplo «' + datos.nombre + ' G.».', true);
+      $('codigo').focus();
+      return;
+    }
     const anteriores = datos.seleccion.length ? datos.seleccion : enviado;
     estado.enviada = new Set(anteriores);
     let borrador = null;
