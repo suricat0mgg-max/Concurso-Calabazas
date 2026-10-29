@@ -4,7 +4,8 @@
   const CONFIG = window.CONFIG || {};
   const API_URL = (CONFIG.API_URL || '').trim();
   const ALMACEN = (CONFIG.ALMACEN_URL || '').trim().replace(/\/+$/, '');
-  const DEMO = !API_URL && !ALMACEN;
+  const FORMULARIO = (CONFIG.FORMULARIO_URL || '').trim();
+  const DEMO = !API_URL && !ALMACEN && !FORMULARIO;
 
   const estado = {
     calabazas: [],
@@ -52,6 +53,7 @@
 
   async function llamar(metodo, datos) {
     if (DEMO) return demo(metodo === 'GET' ? { accion: 'calabazas' } : datos);
+    if (FORMULARIO) return formulario(metodo === 'GET' ? { accion: 'calabazas' } : datos);
     if (ALMACEN) return almacen(metodo === 'GET' ? { accion: 'calabazas' } : datos);
     const opciones = metodo === 'GET'
       ? {}
@@ -225,6 +227,112 @@
   ];
 
   const tienda = ALMACEN ? crearAdaptador(ALMACEN) : null;
+
+  // ---------- Formulario de Google ----------
+  // Cada voto se envía como una respuesta del formulario (Nombre, Votos). El
+  // recuento se lee de la hoja de respuestas publicada como CSV: cuenta el último
+  // voto de cada nombre. «Borrar todos los votos» envía una respuesta con el
+  // nombre MARCA_BORRADO, y solo cuentan las respuestas posteriores a la última.
+  const MARCA_BORRADO = '__borrar_votos__';
+
+  function leerCSV(texto) {
+    const filas = [];
+    let fila = [], campo = '', comillas = false;
+    for (let i = 0; i < texto.length; i++) {
+      const c = texto[i];
+      if (comillas) {
+        if (c === '"' && texto[i + 1] === '"') { campo += '"'; i++; }
+        else if (c === '"') comillas = false;
+        else campo += c;
+      } else if (c === '"') comillas = true;
+      else if (c === ',') { fila.push(campo); campo = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && texto[i + 1] === '\n') i++;
+        fila.push(campo); filas.push(fila); fila = []; campo = '';
+      } else campo += c;
+    }
+    if (campo || fila.length) { fila.push(campo); filas.push(fila); }
+    return filas;
+  }
+
+  // Devuelve {nombreNormalizado: {nombre, ids}} con el último voto de cada docente.
+  async function leerRespuestas() {
+    const url = (CONFIG.RESULTADOS_CSV || '').trim();
+    if (!url) return null;
+    const { texto } = await http(url + (url.includes('?') ? '&' : '?') + 't=' + Date.now());
+    const filas = leerCSV(texto).slice(1);
+    const votos = {};
+    for (const f of filas) {
+      const nombre = String(f[1] || '').trim();
+      if (!nombre) continue;
+      if (nombre === MARCA_BORRADO) { for (const k in votos) delete votos[k]; continue; }
+      const ids = String(f[2] || '').split(/[^0-9]+/).filter(Boolean);
+      votos[normalizarNombre(nombre)] = { nombre: nombreBonito(nombre), ids };
+    }
+    return votos;
+  }
+
+  async function enviarRespuesta(nombre, votos) {
+    const cuerpo = new URLSearchParams();
+    cuerpo.set(CONFIG.CAMPO_NOMBRE, nombre);
+    cuerpo.set(CONFIG.CAMPO_VOTOS, votos);
+    try {
+      // Google no deja leer la respuesta desde otra web (no-cors): si la petición
+      // sale sin error de red, el voto ha llegado.
+      await fetch(FORMULARIO, { method: 'POST', mode: 'no-cors', body: cuerpo });
+    } catch (e) {
+      throw new Error('Sin conexión. Inténtalo de nuevo.');
+    }
+  }
+
+  async function formulario(datos) {
+    const maxVotos = CONFIG.MAX_VOTOS || 26;
+    const calabazas = Array.from({ length: CONFIG.CALABAZAS || 200 }, (_, i) => ({ id: String(i + 1), foto: '' }));
+    const texto = String(datos.codigo || datos.clave || '').trim();
+    const esAdmin = async () => !!texto && (await huella('admin:' + texto.toUpperCase())) === CONFIG.ADMIN;
+
+    switch (datos.accion) {
+      case 'calabazas':
+        return { calabazas, maxVotos, abierta: CONFIG.ABIERTA !== false };
+      case 'entrar': {
+        if (await esAdmin()) return { admin: true };
+        const clave = comprobarNombre(texto);
+        let anteriores = [];
+        try {
+          const votos = await leerRespuestas();
+          if (votos && votos[clave]) anteriores = votos[clave].ids;
+        } catch (e) { /* sin recuento disponible: se empieza en blanco */ }
+        return { nombre: nombreBonito(texto), seleccion: anteriores };
+      }
+      case 'votar': {
+        if (CONFIG.ABIERTA === false) throw new Error('La votación está cerrada');
+        comprobarNombre(texto);
+        const existen = new Set(calabazas.map((c) => c.id));
+        const ids = [...new Set(datos.ids.map(String))];
+        if (!ids.length) throw new Error('Elige al menos una calabaza');
+        if (ids.length > maxVotos) throw new Error('Puedes votar como máximo ' + maxVotos + ' calabazas');
+        if (ids.some((id) => !existen.has(id))) throw new Error('Hay calabazas que no existen');
+        await enviarRespuesta(nombreBonito(texto), ids.join(','));
+        return { ok: true, total: ids.length };
+      }
+      case 'borrar':
+        if (!(await esAdmin())) throw new Error('Código no válido');
+        await enviarRespuesta(MARCA_BORRADO, '-');
+        return { ok: true };
+      case 'resultados': {
+        if (!(await esAdmin())) throw new Error('Código no válido');
+        const votos = await leerRespuestas();
+        if (!votos) throw new Error('Los resultados aún no están conectados. Míralos en el formulario, en «Respuestas».');
+        const cuenta = {};
+        const lista = Object.values(votos);
+        lista.forEach((v) => [...new Set(v.ids)].slice(0, maxVotos).forEach((id) => (cuenta[id] = (cuenta[id] || 0) + 1)));
+        const ranking = calabazas.map((c) => Object.assign({}, c, { votos: cuenta[c.id] || 0 }))
+          .sort((a, b) => b.votos - a.votos);
+        return { ranking, votantes: lista.map((v) => v.nombre) };
+      }
+    }
+    throw new Error('Acción desconocida');
+  }
 
   async function almacen(datos) {
     const maxVotos = CONFIG.MAX_VOTOS || 26;
