@@ -513,7 +513,7 @@
       li.classList.toggle('elegida', elegida);
       li.classList.toggle('bloqueada', lleno && !elegida);
       boton.disabled = lleno && !elegida;
-      boton.textContent = elegida ? '⭐ Elegida' : (lleno ? 'Completo' : 'Votar');
+      boton.textContent = elegida ? 'Elegida' : (lleno ? 'Completo' : 'Votar');
       boton.setAttribute('aria-pressed', elegida);
 
       const visible = (!filtro || c.id.startsWith(filtro)) && (!soloElegidas || elegida);
@@ -577,7 +577,9 @@
     pintarLista();
     mostrar('votar');
     if (!silencioso && anteriores.length) {
-      avisar('Ya votaste ' + anteriores.length + ' calabazas. Puedes cambiarlas.');
+      avisar(anteriores.length === 1
+        ? 'Ya votaste 1 calabaza. Puedes cambiarla.'
+        : 'Ya votaste ' + anteriores.length + ' calabazas. Puedes cambiarlas.');
     }
   }
 
