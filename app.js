@@ -1,8 +1,10 @@
 (function () {
   'use strict';
 
-  const API_URL = (window.CONFIG && window.CONFIG.API_URL || '').trim();
-  const DEMO = !API_URL;
+  const CONFIG = window.CONFIG || {};
+  const API_URL = (CONFIG.API_URL || '').trim();
+  const ALMACEN = (CONFIG.ALMACEN_URL || '').trim().replace(/\/+$/, '');
+  const DEMO = !API_URL && !ALMACEN;
 
   const estado = {
     calabazas: [],
@@ -28,6 +30,7 @@
 
   async function llamar(metodo, datos) {
     if (DEMO) return demo(metodo === 'GET' ? { accion: 'calabazas' } : datos);
+    if (ALMACEN) return almacen(metodo === 'GET' ? { accion: 'calabazas' } : datos);
     const opciones = metodo === 'GET'
       ? {}
       // text/plain evita la petición previa CORS que Apps Script no admite.
@@ -68,6 +71,81 @@
         const ranking = calabazas.map((c) => Object.assign({}, c, { votos: cuenta[c.id] || 0 }))
           .sort((a, b) => b.votos - a.votos);
         return { ranking, votantes: Object.keys(votos).length, docentes: 1 };
+      }
+    }
+    throw new Error('Acción desconocida');
+  }
+
+  // Almacén de claves público (kvdb.io). La página solo guarda huellas SHA-256:
+  // - el voto de cada docente va en la clave huella('voto:' + código), que solo
+  //   puede calcular quien conoce el código;
+  // - CONFIG.VALIDOS tiene huella('ok:' + esa clave), que sirve para saber qué
+  //   claves son de docentes válidos sin revelar cuáles son;
+  // - CONFIG.ADMIN es huella('admin:' + código de administración).
+  async function huella(texto) {
+    const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto));
+    return Array.from(new Uint8Array(bytes), (b) => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function pedir(ruta, opciones) {
+    let respuesta;
+    try {
+      respuesta = await fetch(ALMACEN + ruta, opciones);
+    } catch (e) {
+      throw new Error('Sin conexión. Inténtalo de nuevo.');
+    }
+    if (respuesta.status === 404) return null;
+    if (!respuesta.ok) throw new Error('El servidor no responde. Inténtalo en un momento.');
+    return respuesta.text();
+  }
+
+  async function almacen(datos) {
+    const validos = new Set(CONFIG.VALIDOS || []);
+    const maxVotos = CONFIG.MAX_VOTOS || 27;
+    const calabazas = Array.from({ length: CONFIG.CALABAZAS || 120 }, (_, i) => ({ id: String(i + 1), foto: '' }));
+    const codigo = String(datos.codigo || datos.clave || '').trim().toUpperCase();
+    const esAdmin = async () => !!codigo && (await huella('admin:' + codigo)) === CONFIG.ADMIN;
+    const claveVoto = async () => {
+      if (!codigo) throw new Error('Escribe tu código');
+      const clave = await huella('voto:' + codigo);
+      if (!validos.has(await huella('ok:' + clave))) throw new Error('Código no válido');
+      return clave;
+    };
+
+    switch (datos.accion) {
+      case 'calabazas':
+        return { calabazas, maxVotos, abierta: CONFIG.ABIERTA !== false };
+      case 'entrar': {
+        if (await esAdmin()) return { admin: true };
+        const guardado = await pedir('/' + (await claveVoto()));
+        return { nombre: '', seleccion: guardado ? JSON.parse(guardado).ids || [] : [] };
+      }
+      case 'votar': {
+        if (CONFIG.ABIERTA === false) throw new Error('La votación está cerrada');
+        const clave = await claveVoto();
+        const existen = new Set(calabazas.map((c) => c.id));
+        const ids = [...new Set(datos.ids.map(String))];
+        if (!ids.length) throw new Error('Elige al menos una calabaza');
+        if (ids.length > maxVotos) throw new Error('Puedes votar como máximo ' + maxVotos + ' calabazas');
+        if (ids.some((id) => !existen.has(id))) throw new Error('Hay calabazas que no existen');
+        await pedir('/' + clave, { method: 'PUT', body: JSON.stringify({ ids, fecha: new Date().toISOString() }) });
+        return { ok: true, total: ids.length };
+      }
+      case 'resultados': {
+        if (!(await esAdmin())) throw new Error('Código no válido');
+        const lista = JSON.parse((await pedir('/?values=true&format=json')) || '[]');
+        const cuenta = {};
+        let votantes = 0;
+        for (const [clave, valor] of lista) {
+          if (!validos.has(await huella('ok:' + clave))) continue;
+          let ids = [];
+          try { ids = JSON.parse(valor).ids || []; } catch (e) { continue; }
+          votantes++;
+          [...new Set(ids.map(String))].slice(0, maxVotos).forEach((id) => (cuenta[id] = (cuenta[id] || 0) + 1));
+        }
+        const ranking = calabazas.map((c) => Object.assign({}, c, { votos: cuenta[c.id] || 0 }))
+          .sort((a, b) => b.votos - a.votos);
+        return { ranking, votantes, docentes: validos.size };
       }
     }
     throw new Error('Acción desconocida');
