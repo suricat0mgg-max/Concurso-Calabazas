@@ -12,7 +12,7 @@ Cada docente entra con su código personal y puede elegir **hasta 27 calabazas**
 Abre `index.html` en el navegador. Si `config.js` no tiene URL, funciona en modo demo:
 
 - Código de docente: `DEMO`
-- Resultados: abre `index.html#resultados` con la clave `demo`
+- Resultados: entra con el código `ADMIN`
 
 ## Puesta en marcha
 
@@ -23,12 +23,11 @@ Abre `index.html` en el navegador. Si `config.js` no tiene URL, funciona en modo
 3. Al principio del archivo ajusta:
    - `CANTIDAD_DOCENTES`: cuántas personas pueden votar.
    - `MAX_VOTOS`: cuántas calabazas puede elegir cada una (27).
-   - `CLAVE_ADMIN`: déjala vacía para que los resultados **solo** se vean desde la hoja de cálculo,
-     o pon una clave secreta para verlos también en la página (`#resultados`).
 4. Selecciona la función `configurar` y pulsa **Ejecutar** (acepta los permisos).
-   Se crean las hojas `Calabazas`, `Docentes` y `Votos`, y se generan los códigos de los docentes.
+   Se crean las hojas `Calabazas`, `Docentes`, `Votos` y `Admin`, se generan los códigos de los
+   docentes y un **código de administración** (hoja `Admin`) para ver los resultados.
 5. Rellena las hojas:
-   - **Calabazas:** `id` (número que se ve en la tarjeta), `nombre`, `autor` (p. ej. el grupo) y `foto`.
+   - **Calabazas:** `numero` (1, 2, 3…) y `foto`.
      En `foto` puedes poner cualquier URL de imagen o un enlace de Google Drive
      (el archivo debe estar compartido como "Cualquier persona con el enlace").
    - **Docentes:** ya tiene un código por docente. Escribe al lado el `nombre` de cada uno y
@@ -43,8 +42,8 @@ Abre `index.html` en el navegador. Si `config.js` no tiene URL, funciona en modo
 ### 2. Página
 
 1. Pega la URL en `config.js` → `API_URL`.
-2. Publica la página, por ejemplo con GitHub Pages:
-   **Settings → Pages → Deploy from a branch** y elige la rama y la carpeta `/ (root)`.
+2. La página ya está publicada en https://suricat0mgg-max.github.io/Concurso-Calabazas/ y se
+   actualiza sola con cada cambio (el flujo `.github/workflows/pages.yml` la copia a la rama `gh-pages`).
 3. Comparte el enlace (o un código QR) con los docentes.
 
 > Si cambias `Code.gs`, vuelve a **Implementar → Gestionar implementaciones → Editar → Nueva versión**
@@ -52,9 +51,10 @@ Abre `index.html` en el navegador. Si `config.js` no tiene URL, funciona en modo
 
 ## Durante y después del concurso
 
-- **Ver resultados:** en la hoja de cálculo, menú **🎃 Concurso → Ver resultados**. Crea la hoja
-  `Resultados` con el ranking y cuántos docentes han votado. Solo lo ve quien tenga acceso a la hoja
-  (no la compartas). Si pusiste `CLAVE_ADMIN`, también en `https://tu-pagina/#resultados`.
+- **Ver resultados:** entra en la página con el código de administración (hoja `Admin`). Verás el
+  ranking y cuántos docentes han votado. Solo funciona con ese código, y el servidor lo comprueba.
+  Si alguien lo descubre, usa el menú **🎃 Concurso → Cambiar código de administración**.
+  También puedes usar el menú **🎃 Concurso → Ver resultados**, que crea la hoja `Resultados`.
 - **Cerrar la votación:** pon `VOTACION_ABIERTA = false` en `Code.gs` y publica una nueva versión.
 - Los votos quedan en la hoja `Votos` (una fila por docente con las calabazas elegidas),
   así que también se pueden revisar o exportar desde Google Sheets.

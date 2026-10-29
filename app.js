@@ -46,20 +46,13 @@
 
   // Modo demostración: datos de ejemplo guardados en este navegador.
   function demo(datos) {
-    const nombres = ['Calabaza vampira', 'La bruja sonriente', 'Jack el farolero', 'Gato negro', 'Fantasma feliz',
-      'Momia dormilona', 'Monstruo de caramelo', 'Araña bailarina', 'Calabaza pirata', 'Murciélago Bigotes', 'Zombi simpático'];
-    const clases = ['Infantil 3 años', 'Infantil 4 años', 'Infantil 5 años', '1º', '2º', '3º', '4º', '5º', '6º'];
-    const calabazas = Array.from({ length: 120 }, (_, i) => ({
-      id: String(i + 1),
-      nombre: nombres[i % nombres.length],
-      autor: clases[i % clases.length] + ' ' + 'AB'[i % 2],
-      foto: '',
-    }));
+    const calabazas = Array.from({ length: 120 }, (_, i) => ({ id: String(i + 1), foto: '' }));
     const votos = JSON.parse(local.get('demo-votos') || '{}');
     switch (datos.accion) {
       case 'calabazas':
         return { calabazas, maxVotos: 27, abierta: true };
       case 'entrar':
+        if (String(datos.codigo).trim().toUpperCase() === 'ADMIN') return { admin: true };
         if (String(datos.codigo).trim().toUpperCase() !== 'DEMO') throw new Error('Código no válido');
         return { nombre: 'Docente de prueba', seleccion: votos.DEMO || [] };
       case 'votar':
@@ -69,7 +62,7 @@
         local.set('demo-votos', JSON.stringify(votos));
         return { ok: true, total: datos.ids.length };
       case 'resultados': {
-        if (datos.clave !== 'demo') throw new Error('Clave incorrecta (en demo es: demo)');
+        if (String(datos.clave).trim().toUpperCase() !== 'ADMIN') throw new Error('Código no válido');
         const cuenta = {};
         Object.values(votos).flat().forEach((id) => (cuenta[id] = (cuenta[id] || 0) + 1));
         const ranking = calabazas.map((c) => Object.assign({}, c, { votos: cuenta[c.id] || 0 }))
@@ -119,11 +112,11 @@
         foto = document.createElement('button');
         foto.type = 'button';
         foto.className = 'foto';
-        foto.setAttribute('aria-label', 'Ver foto de ' + (c.nombre || 'calabaza ' + c.id));
+        foto.setAttribute('aria-label', 'Ver foto de la calabaza ' + c.id);
         const img = document.createElement('img');
         img.className = 'foto';
         img.loading = 'lazy';
-        img.alt = c.nombre;
+        img.alt = 'Calabaza ' + c.id;
         img.src = c.foto;
         foto.appendChild(img);
         foto.addEventListener('click', () => abrirVisor(c));
@@ -135,28 +128,19 @@
 
       const numero = document.createElement('span');
       numero.className = 'numero';
-      numero.textContent = 'Nº ' + c.id;
+      numero.textContent = c.id;
       const sello = document.createElement('span');
       sello.className = 'sello';
       sello.setAttribute('aria-hidden', 'true');
       sello.textContent = '⭐';
 
-      const info = document.createElement('div');
-      info.className = 'info';
-      const nombre = document.createElement('p');
-      nombre.className = 'nombre';
-      nombre.textContent = c.nombre || 'Calabaza ' + c.id;
-      const autor = document.createElement('p');
-      autor.className = 'autor';
-      autor.textContent = c.autor;
-      info.append(nombre, autor);
-
       const votar = document.createElement('button');
       votar.type = 'button';
       votar.className = 'votar';
+      votar.setAttribute('aria-label', 'Votar la calabaza ' + c.id);
       votar.addEventListener('click', () => alternar(c.id));
 
-      li.append(foto, numero, sello, info, votar);
+      li.append(foto, numero, sello, votar);
       lista.appendChild(li);
     });
     actualizar();
@@ -165,7 +149,7 @@
   function actualizar() {
     const total = estado.seleccion.size;
     const lleno = total >= estado.maxVotos;
-    const filtro = $('buscar').value.trim().toLowerCase();
+    const filtro = $('buscar').value.trim();
     const soloElegidas = $('solo-elegidas').checked;
     let visibles = 0;
 
@@ -176,11 +160,10 @@
       li.classList.toggle('elegida', elegida);
       li.classList.toggle('bloqueada', lleno && !elegida);
       boton.disabled = lleno && !elegida;
-      boton.textContent = elegida ? '⭐ ¡Elegida!' : (lleno ? 'Ya tienes ' + estado.maxVotos : '🎃 Votar');
+      boton.textContent = elegida ? '⭐ Elegida' : (lleno ? 'Completo' : 'Votar');
       boton.setAttribute('aria-pressed', elegida);
 
-      const texto = (c.id + ' ' + c.nombre + ' ' + c.autor).toLowerCase();
-      const visible = (!filtro || texto.includes(filtro)) && (!soloElegidas || elegida);
+      const visible = (!filtro || c.id.startsWith(filtro)) && (!soloElegidas || elegida);
       li.hidden = !visible;
       if (visible) visibles++;
     });
@@ -210,8 +193,8 @@
 
   function abrirVisor(c) {
     $('visor-img').src = c.foto;
-    $('visor-img').alt = c.nombre;
-    $('visor-texto').textContent = 'Nº ' + c.id + ' · ' + (c.nombre || '') + (c.autor ? ' — ' + c.autor : '');
+    $('visor-img').alt = 'Calabaza ' + c.id;
+    $('visor-texto').textContent = 'Calabaza nº ' + c.id;
     $('visor').showModal();
   }
 
@@ -219,6 +202,10 @@
 
   async function entrar(codigo, silencioso) {
     const datos = await llamar('POST', { accion: 'entrar', codigo });
+    if (datos.admin) {
+      await cargarResultados(codigo);
+      return;
+    }
     estado.codigo = codigo.trim().toUpperCase();
     estado.nombre = datos.nombre;
     estado.enviada = new Set(datos.seleccion);
@@ -237,6 +224,8 @@
   function salir() {
     local.del('codigo');
     estado.codigo = null;
+    estado.claveAdmin = null;
+    $('ranking').innerHTML = '';
     $('saludo').textContent = '';
     $('codigo').value = '';
     mostrar('entrar');
@@ -285,43 +274,45 @@
     }
   }
 
-  async function verResultados(evento) {
-    evento.preventDefault();
-    const boton = evento.submitter || evento.target.querySelector('button');
-    ocupado(boton, 'Cargando…');
+  // Solo para el código de administración: el servidor comprueba la clave en cada petición.
+  async function cargarResultados(clave) {
+    const datos = await llamar('POST', { accion: 'resultados', clave });
+    estado.claveAdmin = clave;
+    $('saludo').textContent = 'Modo organización 🏆';
+    $('resumen').textContent = datos.votantes + ' de ' + datos.docentes + ' docentes han votado.' +
+      (DEMO ? ' (Versión de prueba: solo cuenta los votos de este móvil.)' : '');
+    const ranking = $('ranking');
+    ranking.innerHTML = '';
+    datos.ranking.forEach((c) => {
+      const li = document.createElement('li');
+      let mini;
+      if (c.foto) {
+        mini = document.createElement('img');
+        mini.src = c.foto;
+        mini.alt = '';
+        mini.loading = 'lazy';
+      } else {
+        mini = document.createElement('span');
+        mini.className = 'mini';
+        mini.textContent = '🎃';
+      }
+      const titulo = document.createElement('span');
+      titulo.className = 'titulo';
+      titulo.textContent = 'Nº ' + c.id;
+      const votos = document.createElement('span');
+      votos.className = 'votos';
+      votos.textContent = c.votos + (c.votos === 1 ? ' voto' : ' votos');
+      li.append(mini, titulo, votos);
+      ranking.appendChild(li);
+    });
+    mostrar('resultados');
+  }
+
+  async function actualizarResultados() {
+    const boton = $('btn-actualizar');
+    ocupado(boton, 'Actualizando…');
     try {
-      const datos = await llamar('POST', { accion: 'resultados', clave: $('clave').value });
-      $('resumen').textContent = datos.votantes + ' de ' + datos.docentes + ' docentes han votado.' +
-        (DEMO ? ' (Versión de prueba: solo cuenta los votos de este móvil.)' : '');
-      const ranking = $('ranking');
-      ranking.innerHTML = '';
-      datos.ranking.forEach((c) => {
-        const li = document.createElement('li');
-        let mini;
-        if (c.foto) {
-          mini = document.createElement('img');
-          mini.src = c.foto;
-          mini.alt = '';
-          mini.loading = 'lazy';
-        } else {
-          mini = document.createElement('span');
-          mini.className = 'mini';
-          mini.textContent = '🎃';
-        }
-        const titulo = document.createElement('span');
-        titulo.className = 'titulo';
-        titulo.textContent = 'Nº ' + c.id + ' ' + (c.nombre || '');
-        const autor = document.createElement('small');
-        autor.textContent = c.autor;
-        titulo.appendChild(autor);
-        const votos = document.createElement('span');
-        votos.className = 'votos';
-        votos.textContent = c.votos;
-        li.append(mini, titulo, votos);
-        ranking.appendChild(li);
-      });
-      $('form-resultados').hidden = true;
-      $('resultados').hidden = false;
+      await cargarResultados(estado.claveAdmin);
     } catch (e) {
       avisar(e.message, true);
     } finally {
@@ -332,7 +323,8 @@
   async function iniciar() {
     $('demo-aviso').hidden = !DEMO;
 
-    $('form-resultados').addEventListener('submit', verResultados);
+    $('btn-actualizar').addEventListener('click', actualizarResultados);
+    $('btn-salir-admin').addEventListener('click', salir);
     $('form-entrar').addEventListener('submit', async (e) => {
       e.preventDefault();
       const boton = e.target.querySelector('button');
@@ -352,12 +344,6 @@
     $('btn-salir').addEventListener('click', salir);
     $('buscar').addEventListener('input', actualizar);
     $('solo-elegidas').addEventListener('change', actualizar);
-
-    window.addEventListener('hashchange', () => location.reload());
-    if (location.hash === '#resultados') {
-      mostrar('resultados');
-      return;
-    }
 
     try {
       const datos = await llamar('GET');

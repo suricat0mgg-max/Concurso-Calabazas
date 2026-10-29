@@ -2,7 +2,8 @@
  * Backend del Concurso de Calabazas (Google Apps Script + Google Sheets).
  *
  * Hojas que usa (se crean con la función `configurar`):
- *   Calabazas: id | nombre | autor | foto
+ *   Calabazas: numero | foto
+ *   Admin:     el código de administración (solo lo ve quien tiene la hoja)
  *   Docentes:  codigo | nombre
  *   Votos:     codigo | nombre | fecha | calabazas (ids separados por coma)
  *
@@ -10,15 +11,14 @@
  * calabazas distintas y cambiar su selección mientras la votación esté abierta.
  * Solo pueden votar los códigos de la hoja Docentes (genéralos con generarCodigos).
  *
- * Resultados: menú «🎃 Concurso → Ver resultados» en la hoja de cálculo
- * (solo quien tenga acceso a la hoja), o en la página con CLAVE_ADMIN.
+ * Resultados: se ven en la página entrando con el código de administración,
+ * o en la hoja con el menú «🎃 Concurso → Ver resultados».
+ * El código de administración se guarda en las propiedades del script, no en
+ * este archivo, para que no aparezca en el repositorio.
  */
 
 const MAX_VOTOS = 27;
 const VOTACION_ABIERTA = true;
-// Cambia esta clave y no la compartas: permite ver los resultados en la página.
-// Si la dejas vacía, los resultados solo se ven desde la hoja de cálculo.
-const CLAVE_ADMIN = '';
 // Número de docentes que pueden votar (lo usa generarCodigos).
 const CANTIDAD_DOCENTES = 30;
 
@@ -26,12 +26,14 @@ const HOJA_CALABAZAS = 'Calabazas';
 const HOJA_DOCENTES = 'Docentes';
 const HOJA_VOTOS = 'Votos';
 const HOJA_RESULTADOS = 'Resultados';
+const HOJA_ADMIN = 'Admin';
 
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('🎃 Concurso')
     .addItem('Ver resultados', 'verResultados')
     .addItem('Generar códigos de docentes', 'generarCodigos')
+    .addItem('Cambiar código de administración', 'crearCodigoAdmin')
     .addToUi();
 }
 
@@ -62,6 +64,7 @@ function doPost(e) {
 }
 
 function entrar_(codigo) {
+  if (esAdmin_(codigo)) return { admin: true };
   const docente = buscarDocente_(codigo);
   const voto = buscarVoto_(docente.codigo);
   return {
@@ -100,7 +103,7 @@ function votar_(codigo, ids) {
 }
 
 function resultados_(clave) {
-  if (!CLAVE_ADMIN || clave !== CLAVE_ADMIN) throw new Error('Clave incorrecta');
+  if (!esAdmin_(clave)) throw new Error('Código no válido');
   return contar_();
 }
 
@@ -128,13 +131,13 @@ function verResultados() {
   const libro = SpreadsheetApp.getActive();
   const hoja = libro.getSheetByName(HOJA_RESULTADOS) || libro.insertSheet(HOJA_RESULTADOS);
   hoja.clear();
-  const filas = [['puesto', 'id', 'nombre', 'autor', 'votos']].concat(
-    datos.ranking.map((c, i) => [i + 1, c.id, c.nombre, c.autor, c.votos])
+  const filas = [['puesto', 'calabaza', 'votos']].concat(
+    datos.ranking.map((c, i) => [i + 1, c.id, c.votos])
   );
-  hoja.getRange(1, 1, filas.length, 5).setValues(filas);
-  hoja.getRange(1, 1, 1, 5).setFontWeight('bold');
+  hoja.getRange(1, 1, filas.length, 3).setValues(filas);
+  hoja.getRange(1, 1, 1, 3).setFontWeight('bold');
   hoja.setFrozenRows(1);
-  hoja.getRange(1, 7).setValue('Han votado ' + datos.votantes + ' de ' + datos.docentes + ' docentes · ' + new Date().toLocaleString('es-ES'));
+  hoja.getRange(1, 5).setValue('Han votado ' + datos.votantes + ' de ' + datos.docentes + ' docentes · ' + new Date().toLocaleString('es-ES'));
   libro.setActiveSheet(hoja);
 }
 
@@ -158,6 +161,29 @@ function generarCodigos() {
   if (nuevos.length) hoja.getRange(hoja.getLastRow() + 1, 1, nuevos.length, 2).setValues(nuevos);
 }
 
+/** Crea un código de administración nuevo (el anterior deja de valer) y lo muestra. */
+function crearCodigoAdmin() {
+  const letras = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let codigo = 'ADM-';
+  for (let i = 0; i < 8; i++) codigo += letras[Math.floor(Math.random() * letras.length)];
+  PropertiesService.getScriptProperties().setProperty('CLAVE_ADMIN', codigo);
+
+  const libro = SpreadsheetApp.getActive();
+  const hoja = libro.getSheetByName(HOJA_ADMIN) || libro.insertSheet(HOJA_ADMIN);
+  hoja.clear();
+  hoja.getRange(1, 1, 2, 2).setValues([
+    ['Código de administración', codigo],
+    ['Uso', 'Escríbelo en la página como si fuera un código de docente para ver los resultados. No lo compartas.'],
+  ]);
+  hoja.getRange(1, 1, 2, 1).setFontWeight('bold');
+  return codigo;
+}
+
+function esAdmin_(codigo) {
+  const clave = PropertiesService.getScriptProperties().getProperty('CLAVE_ADMIN');
+  return !!clave && normalizar_(codigo) === clave;
+}
+
 // ---------- Utilidades ----------
 
 function leerCalabazas_() {
@@ -165,9 +191,7 @@ function leerCalabazas_() {
     .filter((f) => String(f[0]).trim() !== '')
     .map((f) => ({
       id: String(f[0]).trim(),
-      nombre: String(f[1] || '').trim(),
-      autor: String(f[2] || '').trim(),
-      foto: urlFoto_(String(f[3] || '').trim()),
+      foto: urlFoto_(String(f[1] || '').trim()),
     }));
 }
 
@@ -233,9 +257,10 @@ function configurar() {
   const libro = SpreadsheetApp.getActive();
   const plantillas = {
     [HOJA_CALABAZAS]: [
-      ['id', 'nombre', 'autor', 'foto'],
-      ['1', 'Calabaza vampira', '3º A', ''],
-      ['2', 'La bruja sonriente', '4º B', ''],
+      ['numero', 'foto'],
+      ['1', ''],
+      ['2', ''],
+      ['3', ''],
     ],
     [HOJA_DOCENTES]: [['codigo', 'nombre']],
     [HOJA_VOTOS]: [['codigo', 'nombre', 'fecha', 'calabazas']],
@@ -249,4 +274,5 @@ function configurar() {
     hoja.setFrozenRows(1);
   });
   generarCodigos();
+  if (!PropertiesService.getScriptProperties().getProperty('CLAVE_ADMIN')) crearCodigoAdmin();
 }

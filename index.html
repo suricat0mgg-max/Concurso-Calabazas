@@ -40,14 +40,14 @@
         <label for="codigo">Código de docente</label>
         <input id="codigo" name="codigo" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
         <button type="submit" class="boton">Entrar</button>
-        <p id="demo-aviso" class="aviso" hidden>Versión de prueba: entra con el código <strong>DEMO</strong>. Los votos solo se guardan en tu móvil.</p>
+        <p id="demo-aviso" class="aviso" hidden>Versión de prueba: entra con el código <strong>DEMO</strong> para votar o <strong>ADMIN</strong> para ver los resultados. Los votos solo se guardan en tu móvil.</p>
       </form>
     </section>
 
     <!-- Pantalla de votación -->
     <section id="pantalla-votar" class="pantalla" hidden>
       <div class="filtros">
-        <input id="buscar" type="search" placeholder="🔍 Busca por número, nombre o clase" aria-label="Buscar calabaza">
+        <input id="buscar" type="search" inputmode="numeric" placeholder="🔍 Busca por número" aria-label="Buscar calabaza por número">
         <label class="solo-elegidas" for="solo-elegidas"><input id="solo-elegidas" type="checkbox"> Ver solo mis elegidas</label>
       </div>
       <ul id="lista" class="rejilla"></ul>
@@ -65,18 +65,14 @@
       </div>
     </section>
 
-    <!-- Resultados (abrir con #resultados) -->
+    <!-- Resultados: solo al entrar con el código de administración -->
     <section id="pantalla-resultados" class="pantalla" hidden>
-      <form id="form-resultados" class="tarjeta">
-        <h2>Resultados 🏆</h2>
-        <label for="clave">Clave de la organización</label>
-        <input id="clave" type="password" required>
-        <button type="submit" class="boton">Ver resultados</button>
-      </form>
-      <div id="resultados" class="tarjeta" hidden>
+      <div class="tarjeta">
         <h2>Resultados 🏆</h2>
         <p id="resumen" class="resumen"></p>
+        <button id="btn-actualizar" class="boton secundario" type="button">Actualizar</button>
         <ol id="ranking" class="ranking"></ol>
+        <button id="btn-salir-admin" class="boton enlace" type="button">Salir</button>
       </div>
     </section>
   </main>
