@@ -15,11 +15,14 @@ Abre `index.html` en el navegador. Si `config.js` no tiene URL, funciona en modo
 - Para votar: escribe cualquier nombre
 - Resultados: entra con el código `ADMIN`
 
-## Guardar los votos sin Google (almacén kvdb.io)
+## Dónde se guardan los votos
 
-En `config.js` pon `ALMACEN_URL` (la dirección del almacén en kvdb.io), `CALABAZAS`,
-`MAX_VOTOS` y `ADMIN`, la huella del código de administración que genera
-`node herramientas/generar-codigos.js`. El código en sí no se sube al repositorio.
+Los votos están en un documento de restful-api.dev (servicio gratuito sin cuenta), configurado en
+`config.js` (`ALMACEN_URL`). `ADMIN` es la huella del código de administración, que genera
+`node herramientas/generar-codigos.js`; el código en sí no se sube al repositorio.
+
+Para crear un almacén nuevo, abre `https://suricat0mgg-max.github.io/Concurso-Calabazas/#preparar`
+y pulsa «Crear almacén»: prueba varios servicios y muestra la dirección para `config.js`.
 
 > La opción de Google de abajo sigue usando códigos de docente en lugar de nombres.
 
