@@ -497,7 +497,7 @@
       estado.seleccion.add(id);
       if (estado.seleccion.size === estado.maxVotos) avisar('🍬 ¡Cubo lleno! Ya tienes ' + estado.maxVotos + ' calabazas.');
     }
-    local.set('borrador-' + estado.codigo, JSON.stringify([...estado.seleccion]));
+    local.set('borrador-' + normalizarNombre(estado.codigo), JSON.stringify([...estado.seleccion]));
     actualizar();
   }
 
@@ -518,16 +518,23 @@
     }
     estado.codigo = codigo.trim();
     estado.nombre = datos.nombre;
-    estado.enviada = new Set(datos.seleccion);
-    const borrador = JSON.parse(local.get('borrador-' + estado.codigo) || 'null');
-    estado.seleccion = new Set(borrador || datos.seleccion);
+    // Si el servidor no puede devolver el voto anterior (el Formulario de Google no
+    // deja leer sus respuestas), se usa el último voto enviado desde este móvil.
+    const clave = normalizarNombre(estado.codigo);
+    let enviado = [];
+    try { enviado = JSON.parse(local.get('enviado-' + clave) || '[]'); } catch (e) { enviado = []; }
+    const anteriores = datos.seleccion.length ? datos.seleccion : enviado;
+    estado.enviada = new Set(anteriores);
+    let borrador = null;
+    try { borrador = JSON.parse(local.get('borrador-' + clave) || 'null'); } catch (e) { borrador = null; }
+    estado.seleccion = new Set(borrador || anteriores);
     local.set('codigo', estado.codigo);
 
     $('saludo').textContent = 'Hola, ' + (estado.nombre.split(' ')[0] || 'docente') + ' 👋';
     pintarLista();
     mostrar('votar');
-    if (!silencioso && datos.seleccion.length) {
-      avisar('Ya votaste ' + datos.seleccion.length + ' calabazas. Puedes cambiarlas.');
+    if (!silencioso && anteriores.length) {
+      avisar('Ya votaste ' + anteriores.length + ' calabazas. Puedes cambiarlas.');
     }
   }
 
@@ -571,7 +578,8 @@
       const ids = [...estado.seleccion];
       await llamar('POST', { accion: 'votar', codigo: estado.codigo, ids });
       estado.enviada = new Set(ids);
-      local.del('borrador-' + estado.codigo);
+      local.set('enviado-' + normalizarNombre(estado.codigo), JSON.stringify(ids));
+      local.del('borrador-' + normalizarNombre(estado.codigo));
       $('gracias-texto').textContent = 'Has votado ' + ids.length + ' de ' + estado.maxVotos +
         ' calabazas posibles. Puedes cambiar tus votos mientras la votación esté abierta.';
       mostrar('gracias');
