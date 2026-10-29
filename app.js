@@ -255,16 +255,49 @@
     return filas;
   }
 
-  // Devuelve {nombreNormalizado: {nombre, ids}} con el último voto de cada docente.
-  async function leerRespuestas() {
-    let url = (CONFIG.RESULTADOS_CSV || '').trim();
+  // Lee la hoja con JSONP (una etiqueta <script>), que Google permite aunque la
+  // lectura normal esté bloqueada por el navegador. Devuelve las filas sin cabecera.
+  function leerHojaJSONP(id) {
+    return new Promise((resolver, rechazar) => {
+      const nombre = 'hojaCalabazas' + Date.now();
+      const script = document.createElement('script');
+      const limpiar = () => { delete window[nombre]; script.remove(); clearTimeout(reloj); };
+      const reloj = setTimeout(() => { limpiar(); rechazar(new Error('La hoja de resultados no responde.')); }, 15000);
+      window[nombre] = (respuesta) => {
+        limpiar();
+        if (!respuesta || respuesta.status === 'error' || !respuesta.table) {
+          rechazar(new Error('No se puede leer la hoja de resultados. ¿Está compartida con «cualquier persona con el enlace»?'));
+          return;
+        }
+        resolver(respuesta.table.rows.map((r) => (r.c || []).map((celda) => (celda ? String(celda.f != null ? celda.f : celda.v) : ''))));
+      };
+      script.onerror = () => { limpiar(); rechazar(new Error('No se puede leer la hoja de resultados.')); };
+      script.src = 'https://docs.google.com/spreadsheets/d/' + id + '/gviz/tq?headers=1&tqx=out:json;responseHandler:' + nombre + '&t=' + Date.now();
+      document.head.appendChild(script);
+    });
+  }
+
+  async function filasDeLaHoja() {
+    const url = (CONFIG.RESULTADOS_CSV || '').trim();
     if (!url) return null;
     // Un enlace normal de la hoja (compartida con «cualquier persona con el enlace»)
-    // se lee como CSV a través de su exportación de consultas.
-    const hoja = url.match(/docs\.google\.com\/spreadsheets\/d\/([\w-]{20,})/);
-    if (hoja && !/\/d\/e\//.test(url)) url = 'https://docs.google.com/spreadsheets/d/' + hoja[1] + '/gviz/tq?tqx=out:csv';
-    const { texto } = await http(url + (url.includes('?') ? '&' : '?') + 't=' + Date.now());
-    const filas = leerCSV(texto).slice(1);
+    // se lee como CSV a través de su exportación de consultas y, si el navegador no
+    // lo permite, con JSONP. Un enlace «Publicar en la Web» (/d/e/…) se lee tal cual.
+    const hoja = !/\/d\/e\//.test(url) && url.match(/docs\.google\.com\/spreadsheets\/d\/([\w-]{20,})/);
+    const csv = hoja ? 'https://docs.google.com/spreadsheets/d/' + hoja[1] + '/gviz/tq?tqx=out:csv' : url;
+    try {
+      const { texto } = await http(csv + (csv.includes('?') ? '&' : '?') + 't=' + Date.now());
+      return leerCSV(texto).slice(1);
+    } catch (e) {
+      if (!hoja) throw e;
+      return leerHojaJSONP(hoja[1]);
+    }
+  }
+
+  // Devuelve {nombreNormalizado: {nombre, ids}} con el último voto de cada docente.
+  async function leerRespuestas() {
+    const filas = await filasDeLaHoja();
+    if (!filas) return null;
     const votos = {};
     for (const f of filas) {
       const nombre = String(f[1] || '').trim();
