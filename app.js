@@ -87,6 +87,10 @@
         votos[comprobarNombre(datos.codigo)] = { nombre: nombreBonito(datos.codigo), ids: datos.ids };
         local.set('demo-votos', JSON.stringify(votos));
         return { ok: true, total: datos.ids.length };
+      case 'borrar':
+        if (!esCodigoAdminDemo(datos.clave)) throw new Error('Código no válido');
+        local.del('demo-votos');
+        return { ok: true };
       case 'resultados': {
         if (!esCodigoAdminDemo(datos.clave)) throw new Error('Código no válido');
         const lista = Object.values(votos).filter((v) => v && Array.isArray(v.ids));
@@ -109,66 +113,113 @@
     return Array.from(new Uint8Array(bytes), (b) => b.toString(16).padStart(2, '0')).join('');
   }
 
-  async function pedir(ruta, opciones) {
-    let respuesta;
+  // Todos los votos van en un único documento JSON {votos: {clave: voto}} guardado
+  // en un servicio gratuito sin cuenta. El tipo de servicio se deduce de la dirección.
+  function tipoAlmacen(base) {
+    if (/extendsclass\.com/.test(base)) return 'extendsclass';
+    if (/restful-api\.dev/.test(base)) return 'restful';
+    return 'jsonblob';
+  }
+
+  async function http(url, opciones) {
+    let r;
     try {
-      respuesta = await fetch(ALMACEN + ruta, opciones);
+      r = await fetch(url, Object.assign({ cache: 'no-store' }, opciones));
     } catch (e) {
       throw new Error('Sin conexión. Inténtalo de nuevo.');
     }
-    if (respuesta.status === 404) return null;
-    if (!respuesta.ok) throw new Error('El servidor no responde. Inténtalo en un momento.');
-    return respuesta.text();
+    const texto = await r.text();
+    if (!r.ok) throw new Error('El servidor respondió ' + r.status + (texto ? ': ' + texto.slice(0, 100) : ''));
+    return { r, texto };
   }
 
-  // Dos tipos de almacén: kvdb.io (una clave por docente) o jsonblob.com (un solo
-  // documento con todos los votos). En jsonblob, al guardar se vuelve a leer para
-  // comprobar que el voto quedó, por si otro docente guardó a la vez.
-  const ES_DOCUMENTO = /jsonblob\.com/.test(ALMACEN);
   const JSON_CABECERAS = { 'Content-Type': 'application/json', Accept: 'application/json' };
+  const espera = (ms) => new Promise((ok) => setTimeout(ok, ms));
 
-  async function leerDocumento() {
-    const texto = await pedir('', { headers: JSON_CABECERAS, cache: 'no-store' });
-    const doc = texto ? JSON.parse(texto) : {};
-    return doc && typeof doc.votos === 'object' && doc.votos ? doc : { votos: {} };
-  }
+  function crearAdaptador(base) {
+    const tipo = tipoAlmacen(base);
+    const envolver = (doc) => JSON.stringify(tipo === 'restful' ? { name: 'concurso-calabazas', data: doc } : doc);
 
-  async function leerVoto(clave) {
-    if (ES_DOCUMENTO) return (await leerDocumento()).votos[clave] || null;
-    const texto = await pedir('/' + clave);
-    return texto ? JSON.parse(texto) : null;
-  }
-
-  async function guardarVoto(clave, voto) {
-    if (!ES_DOCUMENTO) {
-      await pedir('/' + clave, { method: 'PUT', body: JSON.stringify(voto) });
-      return;
+    async function leer() {
+      const { texto } = await http(base, { headers: { Accept: 'application/json' } });
+      let doc = texto ? JSON.parse(texto) : {};
+      if (tipo === 'restful') doc = doc.data;
+      return doc && typeof doc.votos === 'object' && doc.votos ? doc : { votos: {} };
     }
+
+    const escribir = (doc) => http(base, { method: 'PUT', headers: JSON_CABECERAS, body: envolver(doc) });
+
     // Si otro docente guarda justo a la vez, puede escribir el documento sin este
     // voto. Por eso se comprueba al momento y otra vez pasados unos segundos.
-    const espera = (ms) => new Promise((ok) => setTimeout(ok, ms));
-    const sigue = async () => {
-      const comprobado = (await leerDocumento()).votos[clave];
-      return !!comprobado && comprobado.fecha === voto.fecha;
-    };
-    for (let intento = 0; intento < 6; intento++) {
-      const doc = await leerDocumento();
-      doc.votos[clave] = voto;
-      await pedir('', { method: 'PUT', headers: JSON_CABECERAS, body: JSON.stringify(doc) });
-      if (await sigue()) {
-        await espera(2500);
-        if (await sigue()) return;
+    async function guardarVoto(clave, voto) {
+      const sigue = async () => {
+        const v = (await leer()).votos[clave];
+        return !!v && v.fecha === voto.fecha;
+      };
+      for (let intento = 0; intento < 6; intento++) {
+        if (tipo === 'extendsclass') {
+          // Fusiona solo este voto en el documento, sin reescribir los demás.
+          await http(base, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/merge-patch+json' },
+            body: JSON.stringify({ votos: { [clave]: voto } }),
+          });
+        } else {
+          const doc = await leer();
+          doc.votos[clave] = voto;
+          await escribir(doc);
+        }
+        if (await sigue()) {
+          await espera(2500);
+          if (await sigue()) return;
+        }
+        await espera(300 + Math.random() * 900);
       }
-      await espera(300 + Math.random() * 900);
+      throw new Error('No se pudo guardar el voto. Inténtalo de nuevo.');
     }
-    throw new Error('No se pudo guardar el voto. Inténtalo de nuevo.');
+
+    return {
+      leerVoto: async (clave) => (await leer()).votos[clave] || null,
+      guardarVoto,
+      listarVotos: async () => Object.values((await leer()).votos),
+      borrarTodo: () => escribir({ votos: {} }),
+    };
   }
 
-  async function listarVotos() {
-    if (ES_DOCUMENTO) return Object.values((await leerDocumento()).votos);
-    const lista = JSON.parse((await pedir('/?values=true&format=json')) || '[]');
-    return lista.map(([, valor]) => { try { return JSON.parse(valor); } catch (e) { return null; } });
-  }
+  // Crea un documento nuevo en cada servicio y devuelve su dirección.
+  const SERVICIOS = [
+    {
+      nombre: 'extendsclass.com',
+      crear: async () => {
+        const { texto } = await http('https://json.extendsclass.com/bin', { method: 'POST', headers: JSON_CABECERAS, body: '{"votos":{}}' });
+        const id = JSON.parse(texto).id;
+        if (!id) throw new Error('no devolvió la dirección');
+        return 'https://json.extendsclass.com/bin/' + id;
+      },
+    },
+    {
+      nombre: 'restful-api.dev',
+      crear: async () => {
+        const { texto } = await http('https://api.restful-api.dev/objects', {
+          method: 'POST', headers: JSON_CABECERAS, body: JSON.stringify({ name: 'concurso-calabazas', data: { votos: {} } }),
+        });
+        const id = JSON.parse(texto).id;
+        if (!id) throw new Error('no devolvió la dirección');
+        return 'https://api.restful-api.dev/objects/' + id;
+      },
+    },
+    {
+      nombre: 'jsonblob.com',
+      crear: async () => {
+        const { r } = await http('https://jsonblob.com/api/jsonBlob', { method: 'POST', headers: JSON_CABECERAS, body: '{"votos":{}}' });
+        const id = r.headers.get('X-jsonblob-id') || (r.headers.get('Location') || '').split('/').pop();
+        if (!/^[\w-]+$/.test(id || '')) throw new Error('no se pudo leer la dirección');
+        return 'https://jsonblob.com/api/jsonBlob/' + id;
+      },
+    },
+  ];
+
+  const tienda = ALMACEN ? crearAdaptador(ALMACEN) : null;
 
   async function almacen(datos) {
     const maxVotos = CONFIG.MAX_VOTOS || 27;
@@ -182,7 +233,7 @@
         return { calabazas, maxVotos, abierta: CONFIG.ABIERTA !== false };
       case 'entrar': {
         if (await esAdmin()) return { admin: true };
-        const guardado = await leerVoto(await claveVoto());
+        const guardado = await tienda.leerVoto(await claveVoto());
         return { nombre: nombreBonito(texto), seleccion: (guardado && guardado.ids) || [] };
       }
       case 'votar': {
@@ -194,14 +245,18 @@
         if (ids.length > maxVotos) throw new Error('Puedes votar como máximo ' + maxVotos + ' calabazas');
         if (ids.some((id) => !existen.has(id))) throw new Error('Hay calabazas que no existen');
         const voto = { nombre: nombreBonito(texto), ids, fecha: new Date().toISOString() };
-        await guardarVoto(clave, voto);
+        await tienda.guardarVoto(clave, voto);
         return { ok: true, total: ids.length };
       }
+      case 'borrar':
+        if (!(await esAdmin())) throw new Error('Código no válido');
+        await tienda.borrarTodo();
+        return { ok: true };
       case 'resultados': {
         if (!(await esAdmin())) throw new Error('Código no válido');
         const cuenta = {};
         const votantes = [];
-        for (const voto of await listarVotos()) {
+        for (const voto of await tienda.listarVotos()) {
           if (!voto || !Array.isArray(voto.ids)) continue;
           votantes.push(String(voto.nombre || '?'));
           [...new Set(voto.ids.map(String))].slice(0, maxVotos).forEach((id) => (cuenta[id] = (cuenta[id] || 0) + 1));
@@ -463,47 +518,54 @@
     }
   }
 
-  // Crea el documento de votos en jsonblob.com desde el móvil de quien organiza y
-  // prueba que se puede escribir y leer. El resultado se copia para config.js.
+  // Prueba los servicios uno a uno desde el móvil de quien organiza: crea el
+  // documento, guarda y lee un voto de prueba y lo deja vacío. Se queda con el
+  // primero que funcione y muestra su dirección para ponerla en config.js.
   async function prepararAlmacen() {
     const boton = $('btn-preparar');
     const paso = (texto) => ($('preparar-estado').textContent = texto);
-    const cabeceras = { 'Content-Type': 'application/json', Accept: 'application/json' };
     ocupado(boton, 'Preparando…');
     $('preparar-ok').hidden = true;
-    let etapa = 'crear el almacén';
+    const fallos = [];
     try {
-      paso('Creando el almacén…');
-      let r = await fetch('https://jsonblob.com/api/jsonBlob', { method: 'POST', headers: cabeceras, body: '{"votos":{}}' });
-      if (!r.ok) throw new Error('respuesta ' + r.status + ': ' + (await r.text()).slice(0, 120));
-      const ubicacion = r.headers.get('Location') || '';
-      const id = r.headers.get('X-jsonblob-id') || ubicacion.split('/').pop();
-      if (!/^[\w-]+$/.test(id || '')) {
-        throw new Error('no se pudo leer la dirección (cabeceras: ' + [...r.headers.keys()].join(', ') + ')');
+      for (const servicio of SERVICIOS) {
+        let etapa = 'crear el almacén';
+        try {
+          paso('Probando ' + servicio.nombre + '…');
+          const base = await servicio.crear();
+          const prueba = crearAdaptador(base);
+          etapa = 'guardar un voto de prueba';
+          await prueba.guardarVoto('prueba', { nombre: 'Prueba', ids: ['1'], fecha: new Date().toISOString() });
+          etapa = 'leer los votos';
+          const votos = await prueba.listarVotos();
+          if (!votos.some((v) => v && v.nombre === 'Prueba')) throw new Error('no aparece el voto de prueba');
+          etapa = 'dejarlo vacío';
+          await prueba.borrarTodo();
+          paso('✅ Todo funciona con ' + servicio.nombre + '.');
+          $('preparar-texto').value = 'ALMACEN ' + base;
+          $('preparar-ok').hidden = false;
+          return;
+        } catch (e) {
+          fallos.push(servicio.nombre + ': falló al ' + etapa + ' (' + (e.message || 'sin conexión') + ')');
+        }
       }
-      const base = 'https://jsonblob.com/api/jsonBlob/' + id;
+      paso('❌ Ningún servicio ha funcionado. ' + fallos.join(' · ') + '. Haz una captura y envíasela a Claude.');
+    } finally {
+      ocupado(boton, null);
+    }
+  }
 
-      etapa = 'guardar un voto de prueba';
-      paso('Guardando un voto de prueba…');
-      const prueba = { votos: { prueba: { nombre: 'Prueba', ids: ['1'], fecha: new Date().toISOString() } } };
-      r = await fetch(base, { method: 'PUT', headers: cabeceras, body: JSON.stringify(prueba) });
-      if (!r.ok) throw new Error('respuesta ' + r.status + ': ' + (await r.text()).slice(0, 120));
-
-      etapa = 'leer el voto de prueba';
-      paso('Leyendo el voto de prueba…');
-      r = await fetch(base, { headers: cabeceras, cache: 'no-store' });
-      const leido = JSON.parse(await r.text());
-      if (!leido || !leido.votos || !leido.votos.prueba) throw new Error('no se leyó lo mismo que se guardó');
-
-      etapa = 'dejar el almacén vacío';
-      r = await fetch(base, { method: 'PUT', headers: cabeceras, body: '{"votos":{}}' });
-      if (!r.ok) throw new Error('respuesta ' + r.status);
-
-      paso('✅ Todo funciona.');
-      $('preparar-texto').value = 'ALMACEN ' + base;
-      $('preparar-ok').hidden = false;
+  // Borra todos los votos (solo desde la pantalla de resultados del administrador).
+  async function borrarVotos() {
+    $('borrar').close();
+    const boton = $('btn-borrar');
+    ocupado(boton, 'Borrando…');
+    try {
+      await llamar('POST', { accion: 'borrar', clave: estado.claveAdmin });
+      avisar('Votos borrados. La votación empieza de cero.');
+      await cargarResultados(estado.claveAdmin);
     } catch (e) {
-      paso('❌ Falló al ' + etapa + ' (' + (e.message || 'sin conexión') + '). Haz una captura y envíasela a Claude.');
+      avisar(e.message, true);
     } finally {
       ocupado(boton, null);
     }
@@ -540,6 +602,9 @@
     const al = (id, evento, fn) => { const el = $(id); if (el) el.addEventListener(evento, fn); };
     al('btn-actualizar', 'click', actualizarResultados);
     al('btn-salir-admin', 'click', salir);
+    al('btn-borrar', 'click', () => $('borrar').showModal());
+    al('borrar-si', 'click', borrarVotos);
+    al('borrar-no', 'click', () => $('borrar').close());
     al('btn-enviar', 'click', pedirConfirmacion);
     al('confirmar-si', 'click', enviar);
     al('confirmar-no', 'click', () => $('confirmar').close());
