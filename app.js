@@ -121,6 +121,55 @@
     return respuesta.text();
   }
 
+  // Dos tipos de almacén: kvdb.io (una clave por docente) o jsonblob.com (un solo
+  // documento con todos los votos). En jsonblob, al guardar se vuelve a leer para
+  // comprobar que el voto quedó, por si otro docente guardó a la vez.
+  const ES_DOCUMENTO = /jsonblob\.com/.test(ALMACEN);
+  const JSON_CABECERAS = { 'Content-Type': 'application/json', Accept: 'application/json' };
+
+  async function leerDocumento() {
+    const texto = await pedir('', { headers: JSON_CABECERAS, cache: 'no-store' });
+    const doc = texto ? JSON.parse(texto) : {};
+    return doc && typeof doc.votos === 'object' && doc.votos ? doc : { votos: {} };
+  }
+
+  async function leerVoto(clave) {
+    if (ES_DOCUMENTO) return (await leerDocumento()).votos[clave] || null;
+    const texto = await pedir('/' + clave);
+    return texto ? JSON.parse(texto) : null;
+  }
+
+  async function guardarVoto(clave, voto) {
+    if (!ES_DOCUMENTO) {
+      await pedir('/' + clave, { method: 'PUT', body: JSON.stringify(voto) });
+      return;
+    }
+    // Si otro docente guarda justo a la vez, puede escribir el documento sin este
+    // voto. Por eso se comprueba al momento y otra vez pasados unos segundos.
+    const espera = (ms) => new Promise((ok) => setTimeout(ok, ms));
+    const sigue = async () => {
+      const comprobado = (await leerDocumento()).votos[clave];
+      return !!comprobado && comprobado.fecha === voto.fecha;
+    };
+    for (let intento = 0; intento < 6; intento++) {
+      const doc = await leerDocumento();
+      doc.votos[clave] = voto;
+      await pedir('', { method: 'PUT', headers: JSON_CABECERAS, body: JSON.stringify(doc) });
+      if (await sigue()) {
+        await espera(2500);
+        if (await sigue()) return;
+      }
+      await espera(300 + Math.random() * 900);
+    }
+    throw new Error('No se pudo guardar el voto. Inténtalo de nuevo.');
+  }
+
+  async function listarVotos() {
+    if (ES_DOCUMENTO) return Object.values((await leerDocumento()).votos);
+    const lista = JSON.parse((await pedir('/?values=true&format=json')) || '[]');
+    return lista.map(([, valor]) => { try { return JSON.parse(valor); } catch (e) { return null; } });
+  }
+
   async function almacen(datos) {
     const maxVotos = CONFIG.MAX_VOTOS || 27;
     const calabazas = Array.from({ length: CONFIG.CALABAZAS || 120 }, (_, i) => ({ id: String(i + 1), foto: '' }));
@@ -133,8 +182,8 @@
         return { calabazas, maxVotos, abierta: CONFIG.ABIERTA !== false };
       case 'entrar': {
         if (await esAdmin()) return { admin: true };
-        const guardado = await pedir('/' + (await claveVoto()));
-        return { nombre: nombreBonito(texto), seleccion: guardado ? JSON.parse(guardado).ids || [] : [] };
+        const guardado = await leerVoto(await claveVoto());
+        return { nombre: nombreBonito(texto), seleccion: (guardado && guardado.ids) || [] };
       }
       case 'votar': {
         if (CONFIG.ABIERTA === false) throw new Error('La votación está cerrada');
@@ -145,17 +194,14 @@
         if (ids.length > maxVotos) throw new Error('Puedes votar como máximo ' + maxVotos + ' calabazas');
         if (ids.some((id) => !existen.has(id))) throw new Error('Hay calabazas que no existen');
         const voto = { nombre: nombreBonito(texto), ids, fecha: new Date().toISOString() };
-        await pedir('/' + clave, { method: 'PUT', body: JSON.stringify(voto) });
+        await guardarVoto(clave, voto);
         return { ok: true, total: ids.length };
       }
       case 'resultados': {
         if (!(await esAdmin())) throw new Error('Código no válido');
-        const lista = JSON.parse((await pedir('/?values=true&format=json')) || '[]');
         const cuenta = {};
         const votantes = [];
-        for (const [, valor] of lista) {
-          let voto;
-          try { voto = JSON.parse(valor); } catch (e) { continue; }
+        for (const voto of await listarVotos()) {
           if (!voto || !Array.isArray(voto.ids)) continue;
           votantes.push(String(voto.nombre || '?'));
           [...new Set(voto.ids.map(String))].slice(0, maxVotos).forEach((id) => (cuenta[id] = (cuenta[id] || 0) + 1));
@@ -417,47 +463,40 @@
     }
   }
 
-  // Crea un almacén en kvdb.io desde el móvil de quien organiza y prueba que se
-  // puede escribir, leer y listar. El resultado se copia para ponerlo en config.js.
+  // Crea el documento de votos en jsonblob.com desde el móvil de quien organiza y
+  // prueba que se puede escribir y leer. El resultado se copia para config.js.
   async function prepararAlmacen() {
     const boton = $('btn-preparar');
-    const estadoTexto = $('preparar-estado');
-    const paso = (texto) => (estadoTexto.textContent = texto);
+    const paso = (texto) => ($('preparar-estado').textContent = texto);
+    const cabeceras = { 'Content-Type': 'application/json', Accept: 'application/json' };
     ocupado(boton, 'Preparando…');
     $('preparar-ok').hidden = true;
     let etapa = 'crear el almacén';
     try {
-      const email = $('preparar-email').value.trim();
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('escribe un correo válido');
       paso('Creando el almacén…');
-      let r = await fetch('https://kvdb.io/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'email=' + encodeURIComponent(email),
-      });
-      const id = (await r.text()).trim();
-      if (!r.ok || !/^[A-Za-z0-9]+$/.test(id)) throw new Error('respuesta ' + r.status + ': ' + id.slice(0, 120));
-      const base = 'https://kvdb.io/' + id;
+      let r = await fetch('https://jsonblob.com/api/jsonBlob', { method: 'POST', headers: cabeceras, body: '{"votos":{}}' });
+      if (!r.ok) throw new Error('respuesta ' + r.status + ': ' + (await r.text()).slice(0, 120));
+      const ubicacion = r.headers.get('Location') || '';
+      const id = r.headers.get('X-jsonblob-id') || ubicacion.split('/').pop();
+      if (!/^[\w-]+$/.test(id || '')) {
+        throw new Error('no se pudo leer la dirección (cabeceras: ' + [...r.headers.keys()].join(', ') + ')');
+      }
+      const base = 'https://jsonblob.com/api/jsonBlob/' + id;
 
       etapa = 'guardar un voto de prueba';
       paso('Guardando un voto de prueba…');
-      r = await fetch(base + '/prueba', { method: 'PUT', body: JSON.stringify({ nombre: 'Prueba', ids: ['1'] }) });
+      const prueba = { votos: { prueba: { nombre: 'Prueba', ids: ['1'], fecha: new Date().toISOString() } } };
+      r = await fetch(base, { method: 'PUT', headers: cabeceras, body: JSON.stringify(prueba) });
       if (!r.ok) throw new Error('respuesta ' + r.status + ': ' + (await r.text()).slice(0, 120));
 
       etapa = 'leer el voto de prueba';
       paso('Leyendo el voto de prueba…');
-      r = await fetch(base + '/prueba');
+      r = await fetch(base, { headers: cabeceras, cache: 'no-store' });
       const leido = JSON.parse(await r.text());
-      if (!leido || leido.nombre !== 'Prueba') throw new Error('no se leyó lo mismo que se guardó');
+      if (!leido || !leido.votos || !leido.votos.prueba) throw new Error('no se leyó lo mismo que se guardó');
 
-      etapa = 'listar los votos';
-      paso('Listando los votos…');
-      r = await fetch(base + '/?values=true&format=json');
-      const lista = JSON.parse(await r.text());
-      if (!Array.isArray(lista) || !lista.some((f) => f[0] === 'prueba')) throw new Error('la lista no tiene el voto de prueba');
-
-      etapa = 'borrar el voto de prueba';
-      r = await fetch(base + '/prueba', { method: 'DELETE' });
+      etapa = 'dejar el almacén vacío';
+      r = await fetch(base, { method: 'PUT', headers: cabeceras, body: '{"votos":{}}' });
       if (!r.ok) throw new Error('respuesta ' + r.status);
 
       paso('✅ Todo funciona.');
