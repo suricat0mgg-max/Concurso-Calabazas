@@ -88,6 +88,7 @@
         <p id="votantes" class="votantes"></p>
         <button id="btn-actualizar" class="boton secundario" type="button">Actualizar</button>
         <ol id="ranking" class="ranking"></ol>
+        <button id="btn-borrar" class="boton secundario" type="button">🗑️ Borrar todos los votos</button>
         <button id="btn-salir-admin" class="boton enlace" type="button">Salir</button>
       </div>
     </section>
@@ -114,6 +115,15 @@
     <div class="botones">
       <button id="confirmar-no" class="boton secundario" type="button">Revisar</button>
       <button id="confirmar-si" class="boton baba" type="button">¡Sí, enviar!</button>
+    </div>
+  </dialog>
+
+  <dialog id="borrar" class="visor">
+    <h2>¿Borrar todos los votos?</h2>
+    <p>Se borrarán los votos de todos los docentes y la votación empezará de cero. No se puede deshacer.</p>
+    <div class="botones">
+      <button id="borrar-no" class="boton secundario" type="button">Cancelar</button>
+      <button id="borrar-si" class="boton" type="button">Sí, borrar</button>
     </div>
   </dialog>
 
