@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1a1025">
+  <title>Concurso de Calabazas</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎃</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="cabecera">
+    <h1>🎃 Concurso de Calabazas</h1>
+    <p id="saludo" class="saludo"></p>
+  </header>
+
+  <main>
+    <!-- Pantalla de acceso -->
+    <section id="pantalla-entrar" class="pantalla">
+      <form id="form-entrar" class="tarjeta">
+        <h2>Votación de docentes</h2>
+        <p>Escribe tu código personal para votar. Puedes elegir hasta <strong class="max-votos">27</strong> calabazas.</p>
+        <label for="codigo">Código de docente</label>
+        <input id="codigo" name="codigo" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
+        <button type="submit" class="boton">Entrar</button>
+        <p id="demo-aviso" class="aviso" hidden>Modo demostración: usa el código <strong>DEMO</strong>.</p>
+      </form>
+    </section>
+
+    <!-- Pantalla de votación -->
+    <section id="pantalla-votar" class="pantalla" hidden>
+      <div class="filtros">
+        <input id="buscar" type="search" placeholder="Buscar por nombre, autor o número">
+        <label class="solo-elegidas"><input id="solo-elegidas" type="checkbox"> Solo mis elegidas</label>
+      </div>
+      <ul id="lista" class="rejilla"></ul>
+      <p id="sin-resultados" class="vacio" hidden>No hay calabazas que coincidan.</p>
+    </section>
+
+    <!-- Pantalla de confirmación -->
+    <section id="pantalla-gracias" class="pantalla" hidden>
+      <div class="tarjeta centrado">
+        <div class="emoji-grande">👻</div>
+        <h2>¡Votos registrados!</h2>
+        <p id="gracias-texto"></p>
+        <button id="btn-cambiar" class="boton secundario">Cambiar mis votos</button>
+        <button id="btn-salir" class="boton enlace">Salir</button>
+      </div>
+    </section>
+
+    <!-- Resultados (abrir con #resultados) -->
+    <section id="pantalla-resultados" class="pantalla" hidden>
+      <form id="form-resultados" class="tarjeta">
+        <h2>Resultados</h2>
+        <label for="clave">Clave de administración</label>
+        <input id="clave" type="password" required>
+        <button type="submit" class="boton">Ver resultados</button>
+      </form>
+      <div id="resultados" hidden>
+        <p id="resumen" class="resumen"></p>
+        <ol id="ranking" class="ranking"></ol>
+      </div>
+    </section>
+  </main>
+
+  <!-- Barra inferior con el contador y el botón de enviar -->
+  <footer id="barra" class="barra" hidden>
+    <div class="contador"><strong id="contador">0</strong> / <span class="max-votos">27</span> elegidas</div>
+    <button id="btn-enviar" class="boton" disabled>Enviar votos</button>
+  </footer>
+
+  <dialog id="visor" class="visor">
+    <img id="visor-img" alt="">
+    <p id="visor-texto"></p>
+    <form method="dialog"><button class="boton secundario">Cerrar</button></form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
