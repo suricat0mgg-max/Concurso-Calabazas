@@ -254,15 +254,44 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--baba); outl
   font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
-.calabaza .sello {
-  position: absolute;
-  top: 2px;
-  right: 3px;
-  font-size: .9rem;
-  display: none;
-  filter: drop-shadow(0 2px 0 var(--tinta));
+
+/* − 2 + para dar varios votos a la misma calabaza */
+.calabaza .controles {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0;
+  margin: 4px;
 }
-.calabaza.elegida .sello { display: block; }
+.calabaza .controles button {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--naranja);
+  color: var(--tinta);
+  font: inherit;
+  font-size: 1.2rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+.calabaza .controles button:disabled { background: var(--borde); color: var(--suave); cursor: default; }
+.calabaza .cuenta {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-family: var(--fuente-titulo);
+  font-size: 1.25rem;
+  color: var(--naranja-claro);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 360px) {
+  .calabaza .controles button { width: 21px; height: 21px; font-size: .95rem; }
+  .calabaza .cuenta { font-size: 1.05rem; }
+}
 
 
 .calabaza .votar {
