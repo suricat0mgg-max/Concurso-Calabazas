@@ -323,8 +323,8 @@
   async function iniciar() {
     $('demo-aviso').hidden = !DEMO;
 
-    $('btn-actualizar').addEventListener('click', actualizarResultados);
-    $('btn-salir-admin').addEventListener('click', salir);
+    // Lo primero es el acceso: si el móvil tiene una página vieja en caché y falta
+    // algún botón, el resto no debe impedir entrar.
     $('form-entrar').addEventListener('submit', async (e) => {
       e.preventDefault();
       const boton = e.target.querySelector('button');
@@ -337,13 +337,16 @@
         ocupado(boton, null);
       }
     });
-    $('btn-enviar').addEventListener('click', pedirConfirmacion);
-    $('confirmar-si').addEventListener('click', enviar);
-    $('confirmar-no').addEventListener('click', () => $('confirmar').close());
-    $('btn-cambiar').addEventListener('click', () => { mostrar('votar'); actualizar(); });
-    $('btn-salir').addEventListener('click', salir);
-    $('buscar').addEventListener('input', actualizar);
-    $('solo-elegidas').addEventListener('change', actualizar);
+    const al = (id, evento, fn) => { const el = $(id); if (el) el.addEventListener(evento, fn); };
+    al('btn-actualizar', 'click', actualizarResultados);
+    al('btn-salir-admin', 'click', salir);
+    al('btn-enviar', 'click', pedirConfirmacion);
+    al('confirmar-si', 'click', enviar);
+    al('confirmar-no', 'click', () => $('confirmar').close());
+    al('btn-cambiar', 'click', () => { mostrar('votar'); actualizar(); });
+    al('btn-salir', 'click', salir);
+    al('buscar', 'input', actualizar);
+    al('solo-elegidas', 'change', actualizar);
 
     try {
       const datos = await llamar('GET');
@@ -368,6 +371,10 @@
     }
     mostrar('entrar');
   }
+
+  window.addEventListener('error', () => {
+    avisar('Algo ha fallado. Recarga la página; si sigue igual, ábrela en una pestaña de incógnito.', true);
+  });
 
   iniciar();
 })();
