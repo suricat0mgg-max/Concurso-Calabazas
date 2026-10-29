@@ -389,6 +389,7 @@
       $('pantalla-' + p).hidden = p !== pantalla;
     });
     $('barra').hidden = pantalla !== 'votar';
+    $('btn-salir-sesion').hidden = pantalla !== 'votar';
     window.scrollTo(0, 0);
   }
 
@@ -723,6 +724,7 @@
     al('confirmar-no', 'click', () => $('confirmar').close());
     al('btn-cambiar', 'click', () => { mostrar('votar'); actualizar(); });
     al('btn-salir', 'click', salir);
+    al('btn-salir-sesion', 'click', salir);
     al('buscar', 'input', actualizar);
     al('solo-elegidas', 'change', actualizar);
 
