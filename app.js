@@ -428,7 +428,8 @@
       $('pantalla-' + p).hidden = p !== pantalla;
     });
     $('barra').hidden = pantalla !== 'votar';
-    $('btn-salir-sesion').hidden = pantalla !== 'votar';
+    $('btn-salir-sesion').hidden = pantalla !== 'votar' && pantalla !== 'resultados';
+    $('btn-salir-sesion').textContent = pantalla === 'resultados' ? 'Salir del modo organización' : 'Salir (no soy yo)';
     window.scrollTo(0, 0);
   }
 
