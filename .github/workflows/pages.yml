@@ -1,0 +1,32 @@
+name: Publicar en GitHub Pages
+
+on:
+  push:
+    branches: [ccr-bf81f92a-ybx04n]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - name: Preparar archivos de la página
+        run: mkdir _site && cp index.html styles.css app.js config.js _site/
+      - uses: actions/upload-pages-artifact@v3
+      - id: despliegue
+        uses: actions/deploy-pages@v4
